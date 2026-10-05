@@ -392,6 +392,14 @@
   }
 
   // ---------- Helpers ----------
+  // Does any assignment still reference this teacher (live, published snapshot, or as the person covered for)?
+  function assignmentsReferencing(teacherId, assignments) {
+    return (assignments || []).filter(function (a) {
+      if (a.teacherId === teacherId || a.coveringForTeacherId === teacherId) return true;
+      return !!(a.published && (a.published.teacherId === teacherId || a.published.coveringForTeacherId === teacherId));
+    });
+  }
+
   function newId(prefix) {
     return (prefix || 'id') + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
   }
@@ -435,6 +443,6 @@
     snapshotOf: snapshotOf, isDirty: isDirty, publishState: publishState, teacherView: teacherView,
     inWeek: inWeek, touchesWeek: touchesWeek, publishWeek: publishWeek, publishOne: publishOne, weekSummary: weekSummary,
     validateAssignment: validateAssignment, validateTeacher: validateTeacher,
-    newId: newId, byTime: byTime, indexBy: indexBy, initials: initials, firstName: firstName, greeting: greeting
+    assignmentsReferencing: assignmentsReferencing, newId: newId, byTime: byTime, indexBy: indexBy, initials: initials, firstName: firstName, greeting: greeting
   };
 });

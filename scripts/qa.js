@@ -278,14 +278,110 @@ function check(cond, msg) { if (cond) console.log('  ok   ' + msg); else { conso
   check(t.includes('Covering Elementary today') && t.includes('covering for Tom Nguyen'), 'Keisha (teacher login) sees the published reassigned shift');
   await p2.screenshot({ path: path.join(outDir, '15-keisha-after-publish.png'), fullPage: true });
 
-  // Wrong PIN
+  // ---- Regression checks from the review
+  console.log('\n[Regressions]');
   await p2.locator('button', { hasText: 'Log out' }).click();
+  await p2.waitForSelector('.login');
+  // Demo clock: with "today" set, time is pretend too -> a morning block reads "Now" at 10:00 AM
+  await p2.selectOption('#demo-today', info.wed);
+  await p2.waitForTimeout(100);
+  check(await p2.locator('#demo-time').count() === 1, 'demo time select appears when a demo day is set');
+  await p2.selectOption('#demo-time', '10:00');
+  await p2.locator('.person', { hasText: 'Maria Lopez' }).click();
+  await p2.fill('#pin', '1111');
+  await p2.locator('button[type=submit]').click();
+  await p2.waitForSelector('.today-card');
+  t = await text2();
+  check(/Good morning, Maria/.test(t), 'greeting follows the demo clock');
+  check(await p2.locator('.today-card .now').count() === 1, 'morning block shows Now at 10:00 AM (demo)');
+  check(/Later today/.test(t), 'afternoon block shows Later today');
+  // 360px: no horizontal overflow on the teacher screen
+  await p2.setViewportSize({ width: 360, height: 780 });
+  await p2.waitForTimeout(100);
+  check(!(await p2.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)), 'no horizontal scroll at 360px (teacher)');
+  await p2.setViewportSize({ width: 390, height: 844 });
+  await p2.locator('button', { hasText: 'Log out' }).click();
+  await p2.waitForSelector('.login');
+  await p2.locator('.person', { hasText: 'Dana Reyes' }).click();
+  await p2.fill('#pin', '0000');
+  await p2.locator('button[type=submit]').click();
+  await p2.waitForSelector('.day-tabs');
+  // Focus survives an in-place re-render (day tab click)
+  await p2.locator('.day-tab', { hasText: 'Mon' }).focus();
+  await p2.keyboard.press('Enter');
+  await p2.waitForTimeout(100);
+  const focused = await p2.evaluate(() => (document.activeElement && document.activeElement.textContent || '').trim().slice(0, 3));
+  check(focused === 'Mon', 'focus stays on the day tab after re-render (got "' + focused + '")');
+  // Toast while a sheet is open must not wipe typed input (reassign shows a toast)
+  await p2.locator('.arow').first().click();
+  await p2.waitForSelector('#editor-form');
+  await p2.locator('button', { hasText: 'Reassign to someone else' }).click();
+  await p2.locator('#reassign-list .person').first().click();
+  await p2.fill('#f-note', 'typed after the toast appeared');
+  await p2.waitForTimeout(3200);
+  const noteStill = await p2.evaluate(() => document.querySelector('#f-note').value);
+  check(noteStill === 'typed after the toast appeared', 'toast timer did not re-render the open sheet');
+  // Escape closes only the dialog, not the sheet underneath
+  await p2.locator('.sheet button', { hasText: 'Remove this shift' }).click();
+  await p2.waitForSelector('.dialog');
+  await p2.keyboard.press('Escape');
+  await p2.waitForTimeout(100);
+  check(await p2.locator('.dialog').count() === 0 && await p2.locator('.sheet').count() === 1, 'Escape closed the dialog and kept the sheet');
+  check(await p2.evaluate(() => document.getElementById('app').inert === true), 'page behind the sheet is inert');
+  await p2.keyboard.press('Escape');
+  await p2.waitForTimeout(100);
+  check(await p2.locator('.sheet').count() === 0, 'second Escape closed the sheet');
+  check(await p2.evaluate(() => document.getElementById('app').inert === false), 'page is interactive again');
+  // Save & publish now on a double-booked shift asks first
+  await p2.locator('button', { hasText: /Add a shift on/ }).click();
+  await p2.waitForSelector('#editor-form');
+  await p2.selectOption('#f-teacher', 't_maria');
+  await p2.waitForTimeout(100);
+  await p2.locator('.chip', { hasText: 'Morning' }).click();
+  await p2.locator('.sheet button[type=submit]', { hasText: 'publish now' }).click();
+  await p2.waitForSelector('.dialog');
+  t = (await p2.locator('.dialog').innerText()).replace(/\s+/g, ' ');
+  check(/Publish a double-booked shift\?/.test(t), 'publish-now on a conflict asks for confirmation');
+  await p2.locator('.dialog button', { hasText: 'Go back' }).click();
+  await p2.waitForTimeout(100);
+  check(await p2.locator('.sheet').count() === 1, 'going back keeps the editor open');
+  await p2.locator('.sheet button', { hasText: 'Cancel' }).click();
+  // Inactive teacher: their existing shift still opens with "Who" filled
+  await p2.locator('.tab', { hasText: 'Staff' }).click();
+  await p2.locator('.staff-row', { hasText: 'Tom Nguyen' }).locator('button', { hasText: 'Edit' }).click();
+  await p2.waitForSelector('#teacher-form');
+  await p2.locator('#teacher-form input[name=active]').uncheck();
+  await p2.locator('#teacher-form button[type=submit]').click();
+  await p2.waitForTimeout(150);
+  await p2.locator('.tab', { hasText: 'Week' }).click();
+  await p2.waitForSelector('.day-tabs');
+  await p2.locator('.arow', { hasText: 'Tom Nguyen' }).first().click();
+  await p2.waitForSelector('#editor-form');
+  const whoVal = await p2.evaluate(() => document.querySelector('#f-teacher').value);
+  check(whoVal === 't_tom', 'inactive teacher stays selected in the editor');
+  check((await p2.locator('#f-teacher').innerText()).includes('(inactive)'), 'inactive teacher is labeled');
+  await p2.locator('.sheet button', { hasText: 'Cancel' }).click();
+  // Admin cannot deactivate themself
+  await p2.locator('.tab', { hasText: 'Staff' }).click();
+  await p2.locator('.staff-row', { hasText: 'Dana Reyes' }).locator('button', { hasText: 'Edit' }).click();
+  await p2.waitForSelector('#teacher-form');
+  await p2.locator('#teacher-form input[name=active]').uncheck();
+  await p2.locator('#teacher-form button[type=submit]').click();
+  await p2.waitForTimeout(150);
+  t = (await p2.locator('.sheet').innerText());
+  check(/cannot mark yourself inactive/.test(t), 'self-deactivation is blocked');
+  await p2.locator('.sheet button', { hasText: 'Cancel' }).click();
+  await p2.locator('.tab', { hasText: 'Menu' }).click();
+  await p2.waitForSelector('form[data-form=settings]');
+  await p2.locator('button', { hasText: 'Log out' }).click();
+  await p2.waitForSelector('.login');
   await p2.locator('.person', { hasText: 'Maria Lopez' }).click();
   await p2.fill('#pin', '9999');
   await p2.locator('button[type=submit]').click();
   await p2.waitForTimeout(100);
   t = await text2();
   check(t.includes('does not match'), 'wrong PIN rejected');
+  check(await p2.evaluate(() => document.activeElement && document.activeElement.id === 'pin'), 'focus returns to the PIN field after a wrong PIN');
 
   await ctx2.close();
   await browser.close();

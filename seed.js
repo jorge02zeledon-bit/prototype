@@ -140,6 +140,7 @@
   }
 
   function buildSeed(weekStartIso, publishedAtIso) {
+    // Default: the Sunday evening before the week. The app passes an earlier time if that is still in the future.
     var publishedAt = publishedAtIso || (addDaysIso(weekStartIso, -1) + 'T20:00:00');
     var assignments = week.map(function (row, i) {
       var opts = row[8] || {};

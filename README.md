@@ -11,7 +11,7 @@ A mobile-first staff scheduling prototype for a small preschool and elementary s
 - **Hosted click-through:** https://claude.ai/artifact/H1cJ7cieF8Uyd4Gdkzkp5D (private link; same code as `npm run build:artifact` produces in `dist/artifact.html`).
 - **Locally:** open `index.html` in a browser, or run `npm start` and open http://localhost:5173.
 - Log in by tapping a name and entering the demo PIN shown under the PIN field. Dana Reyes (PIN `0000`) is the admin; everyone else is a teacher.
-- The sample week always lands on the **current school week**. Use **Demo controls → Pretend today is…** (login screen or admin Menu) to walk through Wednesday, Thursday and Friday, which have the cross-coverage shifts.
+- The sample week always lands on the **current school week**. Use **Demo controls → Pretend today is…** (login screen or admin Menu) to walk through Wednesday, Thursday and Friday, which have the cross-coverage shifts. When a demo day is set you can also pick the pretend time of day, so the Now / Later today / Done markers make sense. The admin Menu can hide the demo PINs from the login screen.
 
 Suggested 3-minute tour:
 
@@ -202,7 +202,9 @@ Assignment {                                             // one shift / time blo
 Settings {
   schoolName, adminName, adminPhone, adminContact   strings
   blocks        { am: ['07:30','12:00'], pm: ['12:30','15:30'], full: ['07:30','15:30'] }  // time chips
-  demoToday     'YYYY-MM-DD' | null                 // demo override for "today"
+  demoToday     'YYYY-MM-DD' | null                 // demo override for "today" (only within the current school week)
+  demoTime      'HH:MM'                             // pretend time of day while demoToday is set
+  showDemoPins  boolean                             // show each person's PIN on the login screen (demo only)
 }
 
 State (localStorage key hillside-staff-schedule-v1) {

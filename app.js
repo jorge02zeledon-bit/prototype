@@ -23,11 +23,26 @@
     sheet: null,          // { kind: 'assignment'|'teacher', model, errors, warnings, isNew, reassign }
     dialog: null,         // { title, body, confirmLabel, danger, onConfirm }
     toast: null,
-    toastTimer: null
+    toastTimer: null,
+    returnFocus: null
   };
 
   function freshState() {
-    return Seed.buildSeed(C.upcomingSchoolWeekStart(C.todayISO()));
+    var weekStart = C.upcomingSchoolWeekStart(C.todayISO());
+    // Sample data was "published" the Sunday evening before the week, unless that is still in the future.
+    var sunday = new Date(C.addDays(weekStart, -1) + 'T20:00:00');
+    var publishedAt = sunday < new Date() ? sunday.toISOString() : new Date().toISOString();
+    return Seed.buildSeed(weekStart, publishedAt);
+  }
+  // demoToday only makes sense inside the current school week; otherwise forget it.
+  function sanitizeSettings(st) {
+    st.settings = st.settings || {};
+    var weekStart = C.upcomingSchoolWeekStart(C.todayISO());
+    if (st.settings.demoToday && !C.inWeek(st.settings.demoToday, weekStart)) st.settings.demoToday = null;
+    if (!st.settings.demoTime) st.settings.demoTime = '10:00';
+    if (st.settings.showDemoPins === undefined) st.settings.showDemoPins = true;
+    if (!st.settings.blocks) st.settings.blocks = { am: ['07:30', '12:00'], pm: ['12:30', '15:30'], full: ['07:30', '15:30'] };
+    return st;
   }
   function loadState() {
     var raw = null;
@@ -39,13 +54,15 @@
           // Untouched demo data from a past week: silently roll forward to the current week.
           var staleSeed = !s.userEdited && s.seededWeekStart && s.seededWeekStart < C.upcomingSchoolWeekStart(C.todayISO());
           var oldSeed = !s.userEdited && (s.seedVersion || 0) < 2;
-          if (!staleSeed && !oldSeed) return s;
+          if (!staleSeed && !oldSeed) return sanitizeSettings(s);
+        } else {
+          try { localStorage.setItem(STORE_KEY + '-corrupt', raw); } catch (e2) { /* ignore */ }
         }
       } catch (e) {
         try { localStorage.setItem(STORE_KEY + '-corrupt', raw); } catch (e2) { /* ignore */ }
       }
     }
-    return freshState();
+    return sanitizeSettings(freshState());
   }
   function save() {
     try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
@@ -66,7 +83,12 @@
   function L() { return C.indexBy(state.locations); }
   function P() { return C.indexBy(state.positions); }
   function todayISO() { return (state.settings && state.settings.demoToday) || C.todayISO(); }
-  function nowMinutes() { var d = new Date(); return d.getHours() * 60 + d.getMinutes(); }
+  // With "Pretend today is" set, the clock is pretend too (settings.demoTime), so Now / Later today / Done make sense.
+  function nowMinutes() {
+    if (state.settings && state.settings.demoToday) return C.toMinutes(state.settings.demoTime || '10:00');
+    var d = new Date(); return d.getHours() * 60 + d.getMinutes();
+  }
+  function nowHour() { return Math.floor(nowMinutes() / 60); }
   function nowStamp() { return new Date().toISOString(); }
   function currentUser() { return session ? T()[session.teacherId] || null : null; }
   function isAdmin(t) { return !!t && t.role === 'admin'; }
@@ -176,9 +198,12 @@
     return C.DAY_SHORT[d.getDay()] + ' ' + (d.getMonth() + 1) + '/' + d.getDate() + ', ' + h12 + ':' + (m < 10 ? '0' : '') + m + ' ' + suf;
   }
   function phoneLink() {
-    var ph = state.settings.adminPhone;
+    var ph = String(state.settings.adminPhone || '').trim();
+    var digits = ph.replace(/[^\d+]/g, '');
     if (!ph) return '';
-    return '<a class="contact-link" href="sms:' + esc(ph.replace(/[^\d+]/g, '')) + '">' + ICON.message + '<span>Questions? Text ' + esc(adminFirst()) + ': <strong class="tnum">' + esc(ph) + '</strong></span></a>';
+    var inner = ICON.message + '<span>Questions? Text ' + esc(adminFirst()) + ': <strong class="tnum">' + esc(ph) + '</strong></span>';
+    if (digits.replace(/\D/g, '').length < 7) return '<p class="contact-link">' + inner + '</p>';
+    return '<a class="contact-link" href="sms:' + esc(digits) + '">' + inner + '</a>';
   }
 
   // ---------------------------------------------------------------- routing
@@ -204,6 +229,20 @@
   var TITLES = { login: 'Sign in', me: 'My Schedule', 'admin-week': 'Schedule builder', 'admin-board': 'Who is where', 'admin-staff': 'Staff', 'admin-menu': 'Menu' };
 
   // ---------------------------------------------------------------- render
+  // A selector that finds "the same control" again after a re-render, so focus is not dropped to <body>.
+  function focusKey(el) {
+    if (!el || el === document.body || !el.getAttribute) return null;
+    var a = el.getAttribute('data-action');
+    if (!a) return el.id ? '#' + el.id : null;
+    var sel = '[data-action="' + a + '"]';
+    ['data-date', 'data-id', 'data-route', 'data-set', 'data-delta', 'data-target', 'data-start'].forEach(function (k) {
+      var v = el.getAttribute(k); if (v != null) sel += '[' + k + '="' + v + '"]';
+    });
+    return sel;
+  }
+  function focusEl(el) { if (el) { try { el.focus({ preventScroll: true }); } catch (e) { /* ignore */ } } }
+  function prefersReducedMotion() { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } }
+
   function render() {
     var route = resolveRoute();
     var routeChanged = route !== ui.lastRoute;
@@ -211,6 +250,7 @@
     try { if (readHash() !== route) location.hash = route; } catch (e) { /* ignore */ }
     var app = document.getElementById('app');
     var y = window.scrollY;
+    var activeKey = app.contains(document.activeElement) ? focusKey(document.activeElement) : null;
     var html = '';
     app.className = 'app';
     if (route === 'login') html = viewLogin();
@@ -231,44 +271,76 @@
       ui.lastRoute = route;
       window.scrollTo(0, 0);
       var h1 = app.querySelector('h1');
-      if (h1) { h1.setAttribute('tabindex', '-1'); try { h1.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+      if (h1) { h1.setAttribute('tabindex', '-1'); focusEl(h1); }
     } else {
       window.scrollTo(0, y);
+      if (activeKey && !ui.sheet && !ui.dialog) { try { focusEl(app.querySelector(activeKey)); } catch (e) { /* bad selector */ } }
+      if (route === 'login' && ui.loginError) focusEl(app.querySelector('#pin'));
     }
   }
 
   function renderLayer() {
     var layer = document.getElementById('layer');
+    var app = document.getElementById('app');
     var html = '';
     if (ui.sheet) html += '<div class="scrim" data-action="close-sheet"></div>' + (ui.sheet.kind === 'assignment' ? sheetAssignment() : sheetTeacher());
-    if (ui.dialog) html += '<div class="scrim" data-action="close-dialog"></div>' + viewDialog();
-    if (ui.toast) html += '<div class="toast" role="status">' + esc(ui.toast) + '</div>';
+    if (ui.dialog) html += '<div class="scrim scrim-top" data-action="close-dialog"></div>' + viewDialog();
     layer.innerHTML = html;
+    var open = !!(ui.sheet || ui.dialog);
+    // Everything behind the top layer is inert: no stray taps or Tab stops.
+    try { app.inert = open; } catch (e) { /* older browsers */ }
+    var sheetEl = layer.querySelector('.sheet');
+    if (sheetEl) { try { sheetEl.inert = !!ui.dialog; } catch (e) { /* ignore */ } }
+    syncSegmented(layer);
     if (ui.sheet) {
       if (ui.sheet.kind === 'assignment') updateEditorLive();
       var first = layer.querySelector('.sheet [autofocus]');
-      if (first && !ui.sheet.keepFocus) { try { first.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+      if (first && !ui.sheet.keepFocus && !ui.dialog) focusEl(first);
       ui.sheet.keepFocus = false;
     }
-    if (ui.dialog) {
-      var btn = layer.querySelector('.dialog .btn-outline');
-      if (btn) { try { btn.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+    if (ui.dialog) focusEl(layer.querySelector('.dialog .btn-outline'));
+    document.body.style.overflow = open ? 'hidden' : '';
+    if (!open && ui.returnFocus) {
+      try { focusEl(app.querySelector(ui.returnFocus)); } catch (e) { /* bad selector */ }
+      ui.returnFocus = null;
     }
-    document.body.style.overflow = (ui.sheet || ui.dialog) ? 'hidden' : '';
+  }
+  // Remember what opened a layer so focus can go back there when it closes.
+  function rememberFocus() { if (!ui.returnFocus) ui.returnFocus = focusKey(document.activeElement); }
+  // Segmented controls: mirror the checked radio onto the label (works without :has()).
+  function syncSegmented(root) {
+    (root || document).querySelectorAll('.seg label').forEach(function (l) {
+      var input = l.querySelector('input'); l.classList.toggle('is-checked', !!(input && input.checked));
+    });
   }
 
+  // Toasts live in their own live region so showing or hiding one never re-renders an open sheet.
   function toast(msg) {
     ui.toast = msg;
     clearTimeout(ui.toastTimer);
-    ui.toastTimer = setTimeout(function () { ui.toast = null; renderLayer(); }, 2800);
-    renderLayer();
+    ui.toastTimer = setTimeout(function () { ui.toast = null; renderToast(); }, 2800);
+    renderToast();
+  }
+  function renderToast() {
+    var region = document.getElementById('toast-region');
+    if (region) region.innerHTML = ui.toast ? '<div class="toast">' + esc(ui.toast) + '</div>' : '';
   }
 
   // ---------------------------------------------------------------- login
   function demoTodayOptions() {
     var weekStart = C.upcomingSchoolWeekStart(C.todayISO());
-    return '<option value=""' + (!state.settings.demoToday ? ' selected' : '') + '>The real date (' + esc(C.formatDate(C.todayISO(), 'short')) + ')</option>' +
+    return '<option value=""' + (!state.settings.demoToday ? ' selected' : '') + '>The real date and time (' + esc(C.formatDate(C.todayISO(), 'short')) + ')</option>' +
       C.weekDays(weekStart, 5).map(function (d) { return '<option value="' + d + '"' + (state.settings.demoToday === d ? ' selected' : '') + '>' + esc(C.formatDate(d, 'long')) + '</option>'; }).join('');
+  }
+  function demoTimeOptions() {
+    var times = [['06:45', '6:45 AM, before school'], ['10:00', '10:00 AM, mid-morning'], ['13:00', '1:00 PM, afternoon'], ['16:00', '4:00 PM, after school']];
+    return times.map(function (t) { return '<option value="' + t[0] + '"' + ((state.settings.demoTime || '10:00') === t[0] ? ' selected' : '') + '>' + t[1] + '</option>'; }).join('');
+  }
+  function demoControls() {
+    return '<div class="field"><label for="demo-today">Pretend today is</label>' +
+      '<select class="select" id="demo-today" data-change="demo-today">' + demoTodayOptions() + '</select></div>' +
+      (state.settings.demoToday ? '<div class="field"><label for="demo-time">and the time is</label><select class="select" id="demo-time" data-change="demo-time">' + demoTimeOptions() + '</select></div>' : '') +
+      '<p class="hint">The sample week always lands on the current school week. Wednesday, Thursday and Friday have cross-coverage.</p>';
   }
   function viewLogin() {
     var people = activeTeachers();
@@ -277,26 +349,24 @@
       '<main class="login">' +
       '<div class="mark">' + ICON.school + '</div>' +
       '<div><h1>' + esc(state.settings.schoolName) + '</h1><p class="sub">Staff schedule. Tap your name to see where you are this week.</p></div>' +
-      '<div class="people" role="list">' +
+      '<ul class="people">' +
       people.map(function (t) {
-        return '<button type="button" class="person' + (sel && sel.id === t.id ? ' is-selected' : '') + '" data-action="login-pick" data-id="' + esc(t.id) + '" role="listitem" aria-pressed="' + (sel && sel.id === t.id ? 'true' : 'false') + '">' +
+        return '<li><button type="button" class="person' + (sel && sel.id === t.id ? ' is-selected' : '') + '" data-action="login-pick" data-id="' + esc(t.id) + '" aria-pressed="' + (sel && sel.id === t.id ? 'true' : 'false') + '">' +
           avatar(t) +
           '<span><span class="p-name">' + esc(t.name) + '</span><br><span class="p-sub">' + esc(t.role === 'admin' ? 'Director · admin' : posLabel(t.usualPositionId) + ' · usually ' + usualAreaWord(t)) + '</span></span>' +
-          '</button>';
+          '</button></li>';
       }).join('') +
-      '</div>' +
+      '</ul>' +
       (sel ? '<form class="pin-box" data-form="login" id="login-form">' +
         '<div class="field"><label for="pin">PIN for ' + esc(C.firstName(sel.name)) + '</label>' +
         '<input class="input pin-input" id="pin" name="pin" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" autofocus aria-describedby="pin-hint" placeholder="••••"></div>' +
         (ui.loginError ? '<div class="errors" role="alert">' + esc(ui.loginError) + '</div>' : '') +
-        '<p class="demo-hint" id="pin-hint">Demo PIN for ' + esc(C.firstName(sel.name)) + ': <strong class="tnum">' + esc(sel.pin) + '</strong></p>' +
+        (state.settings.showDemoPins ? '<p class="demo-hint" id="pin-hint">Demo PIN for ' + esc(C.firstName(sel.name)) + ': <strong class="tnum">' + esc(sel.pin) + '</strong></p>' : '<p class="demo-hint" id="pin-hint">Ask ' + esc(adminFirst()) + ' if you forgot your PIN.</p>') +
         '<button class="btn btn-primary btn-block" type="submit">Open my schedule</button>' +
         '</form>' : '') +
-      '<details class="menu-card card"><summary class="details-summary">Demo controls</summary>' +
-      '<div class="field" style="margin-top:12px"><label for="demo-today">Pretend today is</label>' +
-      '<select class="select" id="demo-today" data-change="demo-today">' + demoTodayOptions() + '</select>' +
-      '<p class="hint">The sample week always lands on the current school week. Wednesday, Thursday and Friday have cross-coverage.</p></div>' +
-      '<button class="btn btn-outline" type="button" data-action="reset-demo">Reset demo data</button>' +
+      '<details class="menu-card card"' + (state.settings.demoToday ? ' open' : '') + '><summary class="details-summary">Demo controls</summary>' +
+      '<div class="demo-grid">' + demoControls() +
+      '<button class="btn btn-outline" type="button" data-action="reset-demo">Reset demo data</button></div>' +
       '</details>' +
       '</main>';
   }
@@ -316,7 +386,7 @@
     var everyone = preview ? state.assignments : allPublishedItems();
     if (ui.teacherWeekOffset === null) ui.teacherWeekOffset = defaultTeacherOffset(items, today);
     var todays = items.filter(function (v) { return v.date === today; });
-    var hour = new Date().getHours();
+    var hour = nowHour();
     var lastPublished = items.reduce(function (m, v) { return v.publishedAt && v.publishedAt > m ? v.publishedAt : m; }, '');
 
     var html = '<header class="topbar">' +
@@ -357,8 +427,11 @@
     var upcomingCross = items.filter(function (v) { return v.date > today && C.coverage(teacher, v).kind === 'cross'; })[0];
     if (upcomingCross) {
       var w = C.withYou(upcomingCross, everyone);
-      html += '<a class="headsup" href="#day-' + esc(upcomingCross.date) + '" data-action="scroll-to" data-target="day-' + esc(upcomingCross.date) + '">' + ICON.swap + '<span><strong>Heads up:</strong> ' +
-        esc(C.relativeDayLabel(upcomingCross.date, today).toLowerCase() === 'tomorrow' ? 'tomorrow' : 'on ' + C.formatDate(upcomingCross.date, 'weekday')) +
+      var thisWeekStart = C.weekStart(today);
+      var crossOffset = Math.round((C.fromISODate(C.weekStart(upcomingCross.date)) - C.fromISODate(thisWeekStart)) / (7 * 86400000));
+      var dayDiff = Math.round((C.fromISODate(upcomingCross.date) - C.fromISODate(today)) / 86400000);
+      var when = dayDiff === 1 ? 'tomorrow' : dayDiff < 6 ? 'on ' + C.formatDate(upcomingCross.date, 'weekday') : 'on ' + C.formatDate(upcomingCross.date, 'short');
+      html += '<a class="headsup" href="#day-' + esc(upcomingCross.date) + '" data-action="scroll-to" data-target="day-' + esc(upcomingCross.date) + '" data-set="' + crossOffset + '">' + ICON.swap + '<span><strong>Heads up:</strong> ' + esc(when) +
         ' you are covering <strong>' + esc(C.areaLabel(upcomingCross.area)) + '</strong> in <strong>' + esc(locName(upcomingCross.locationId)) + '</strong>, ' + esc(C.formatRange(upcomingCross.start, upcomingCross.end)) +
         (w.length ? ', with ' + esc(C.firstName(teacherName(w[0].assignment.teacherId))) : '') + '.</span></a>';
     }
@@ -376,7 +449,7 @@
 
     html += '<section class="section" aria-labelledby="week-h"><div class="section-head"><h2 class="eyebrow" id="week-h">' + esc(title) + '</h2><span class="section-sub tnum">' + esc(C.formatWeekLabel(weekStart)) + '</span></div>';
     if (!weekItems.length) {
-      html += '<div class="day-empty">Nothing is published for this week yet' + (offset > 0 ? '. ' + esc(adminFirst()) + ' usually publishes by the end of the week.' : '.') + '</div>';
+      html += '<div class="day-empty">Nothing is published for ' + (offset === 1 ? 'next week' : offset === 0 ? 'this week' : 'that week') + ' yet.</div>';
     } else if (!laterItems.length && offset === 0) {
       html += '<div class="day-empty">Nothing more this week.</div>';
     } else {
@@ -411,7 +484,7 @@
 
   function withYouLine(v, everyone) {
     var w = C.withYou(v, everyone);
-    if (!w.length) return '<p class="with-you muted">No other staff scheduled in this room.</p>';
+    if (!w.length) return '<p class="with-you muted">No one else is scheduled here during this block.</p>';
     return '<p class="with-you"><span class="wy-label">With you:</span> ' + w.map(function (x) {
       var partial = x.start !== v.start || x.end !== v.end;
       return esc(teacherName(x.assignment.teacherId)) + ', ' + esc(posLabel(x.assignment.positionId)) + (partial ? ' (' + esc(C.formatRange(x.start, x.end)) + ')' : '');
@@ -421,24 +494,28 @@
     var cf = v.coveringForTeacherId && T()[v.coveringForTeacherId];
     return esc(posLabel(v.positionId)) + (cf ? ' <span class="covering-for">· covering for ' + esc(cf.name) + '</span>' : '');
   }
+  // Cross-coverage cards end with what comes next, so the teacher knows how long this lasts.
   function afterwardsLine(teacher, v, items) {
     if (teacher.usualArea === 'both') return '';
     var next = C.nextAfter(v, items);
     if (!next) {
       var usualLoc = teacher.usualLocationId ? locName(teacher.usualLocationId) : '';
-      return usualLoc ? '<p class="after muted">Nothing else published after this. Your usual room is ' + esc(usualLoc) + '.</p>' : '';
+      return '<p class="after muted">This is your last block on the schedule for now.' + (usualLoc ? ' Your usual room is ' + esc(usualLoc) + '.' : '') + '</p>';
     }
     var nextCov = C.coverage(teacher, next);
-    var when = next.date === v.date ? 'Then at ' + C.formatTime(next.start) : C.relativeDayLabel(next.date, v.date);
+    var dayDiff = Math.round((C.fromISODate(next.date) - C.fromISODate(v.date)) / 86400000);
+    var when = next.date === v.date ? 'Then at ' + C.formatTime(next.start) : dayDiff < 6 ? C.relativeDayLabel(next.date, v.date) : C.formatDate(next.date, 'short');
     if (nextCov.kind === 'cross') return '<p class="after muted">' + esc(when) + ': ' + esc(locName(next.locationId)) + ', still covering ' + esc(C.areaLabel(next.area)) + '.</p>';
-    return '<p class="after"><span class="muted">' + esc(when) + ':</span> ' + esc(locName(next.locationId)) + ', as usual.</p>';
+    var backToUsual = nextCov.kind === 'usual' && (!teacher.usualLocationId || next.locationId === teacher.usualLocationId);
+    if (backToUsual) return '<p class="after"><span class="muted">' + esc(when) + ':</span> ' + esc(locName(next.locationId)) + ', as usual.</p>';
+    return '<p class="after"><span class="muted">' + esc(when) + ':</span> ' + esc(locName(next.locationId)) + ', ' + esc(posLabel(next.positionId)) + '.</p>';
   }
   function srSummary(teacher, v, today, everyone) {
     var cov = C.coverage(teacher, v);
     var w = C.withYou(v, everyone);
     return '<p class="sr-only">' + esc(C.relativeDayLabel(v.date, today)) + ', ' + esc(C.formatRange(v.start, v.end)) + '. ' + esc(C.coverageLabel(cov, v.date === today)) + '. ' +
       esc(locName(v.locationId)) + (locDetail(v.locationId) ? ', ' + esc(locDetail(v.locationId)) : '') + '. Position: ' + esc(posLabel(v.positionId)) +
-      (v.coveringForTeacherId ? ', covering for ' + esc(teacherName(v.coveringForTeacherId)) : '') + '. ' +
+      (v.coveringForTeacherId && T()[v.coveringForTeacherId] ? ', covering for ' + esc(teacherName(v.coveringForTeacherId)) : '') + '. ' +
       (w.length ? 'With you: ' + w.map(function (x) { return esc(teacherName(x.assignment.teacherId)); }).join(', ') + '. ' : '') +
       (v.note ? 'Note from ' + esc(adminFirst()) + ': ' + esc(v.note) : '') + '</p>';
   }
@@ -484,7 +561,7 @@
     return '<details class="row ' + areaCls + (isCross ? ' is-cross' : '') + '"><summary>' + inner + '<span class="row-more">Details</span></summary>' +
       '<div class="row-detail">' +
       (locDetail(v.locationId) ? '<p class="muted">' + esc(locDetail(v.locationId)) + '</p>' : '') +
-      (w.length ? '<p><span class="wy-label">With you:</span> ' + w.map(function (x) { return esc(teacherName(x.assignment.teacherId)) + ', ' + esc(posLabel(x.assignment.positionId)); }).join(' · ') + '</p>' : '<p class="muted">No other staff scheduled in this room.</p>') +
+      (w.length ? '<p><span class="wy-label">With you:</span> ' + w.map(function (x) { return esc(teacherName(x.assignment.teacherId)) + ', ' + esc(posLabel(x.assignment.positionId)); }).join(' · ') + '</p>' : '<p class="muted">No one else is scheduled here during this block.</p>') +
       (v.note ? '<blockquote class="note"><span class="note-label">From ' + esc(adminFirst()) + '</span>' + esc(v.note) + '</blockquote>' : '') +
       '</div></details>';
   }
@@ -499,15 +576,16 @@
   function adminTop(title, right) {
     return '<header class="topbar"><div><div class="brand">' + esc(state.settings.schoolName) + '</div><h1 class="title">' + esc(title) + '</h1></div><div class="actions">' + (right || '') + '</div></header>';
   }
+  function homeWeek() { return C.upcomingSchoolWeekStart(todayISO()); } // on Sat/Sun, the coming week
   function ensureAdminWeek() {
-    if (!ui.adminWeek) ui.adminWeek = C.weekStart(todayISO());
+    if (!ui.adminWeek) ui.adminWeek = homeWeek();
     if (!ui.adminDay || !C.inWeek(ui.adminDay, ui.adminWeek)) {
       var t = todayISO();
       ui.adminDay = C.inWeek(t, ui.adminWeek) && !C.isWeekend(t) ? t : ui.adminWeek;
     }
   }
   function weekNav(action) {
-    var isThis = ui.adminWeek === C.weekStart(todayISO());
+    var isThis = ui.adminWeek === homeWeek();
     return '<div class="week-nav" style="margin-top:12px">' +
       '<button class="btn btn-sm btn-outline btn-icon" type="button" data-action="' + action + '" data-delta="-1" aria-label="Previous week">' + ICON.left + '</button>' +
       '<button class="btn btn-sm btn-ghost week-label" type="button" data-action="' + action + '" data-delta="0"' + (isThis ? ' disabled' : '') + '><span class="label tnum">Week of ' + esc(C.formatWeekLabel(ui.adminWeek)) + '</span><span class="section-sub">' + (isThis ? 'This week' : 'Tap for this week') + '</span></button>' +
@@ -651,9 +729,8 @@
       '<div class="field"><label for="adminPhone">Your phone (teachers can text it from a covering shift)</label><input class="input tnum" id="adminPhone" name="adminPhone" inputmode="tel" value="' + esc(state.settings.adminPhone || '') + '"></div>' +
       '<div class="field"><label for="adminContact">How teachers reach you</label><input class="input" id="adminContact" name="adminContact" value="' + esc(state.settings.adminContact) + '"><p class="hint">Shown at the bottom of every teacher’s schedule.</p></div>' +
       '<button class="btn btn-outline" type="submit">Save settings</button></form>';
-    html += '<div class="card menu-card section"><h2>Demo controls</h2>' +
-      '<div class="field"><label for="demo-today">Pretend today is</label><select class="select" id="demo-today" data-change="demo-today">' + demoTodayOptions() + '</select>' +
-      '<p class="hint">Changes what every screen treats as “today”. Wednesday, Thursday and Friday of the sample week have cross-coverage.</p></div>' +
+    html += '<div class="card menu-card section"><h2>Demo controls</h2>' + demoControls() +
+      '<label class="check"><input type="checkbox" data-change="show-pins"' + (state.settings.showDemoPins ? ' checked' : '') + '> Show demo PINs on the login screen</label>' +
       '<button class="btn btn-outline" type="button" data-action="reset-demo">Reset demo data</button>' +
       '<p class="hint">Restores the sample week and staff. Everything you changed is removed.</p></div>';
     html += '<div class="card menu-card section"><h2>About this prototype</h2><p class="small muted">Everything is stored in this browser only. There is no server yet, so publishing makes shifts visible to teachers who log in on this same device or browser. The data model is described in the README so it can move to a real backend later.</p>' +
@@ -669,7 +746,7 @@
       '<div class="dialog-actions"><button class="btn btn-outline" type="button" data-action="close-dialog">' + esc(d.cancelLabel || 'Go back') + '</button>' +
       '<button class="btn ' + (d.danger ? 'btn-danger' : 'btn-primary') + '" type="button" data-action="confirm-dialog">' + esc(d.confirmLabel) + '</button></div></div>';
   }
-  function confirmDialog(opts) { ui.dialog = opts; renderLayer(); }
+  function confirmDialog(opts) { rememberFocus(); ui.dialog = opts; renderLayer(); }
 
   // ---------------------------------------------------------------- assignment editor sheet
   function openAssignmentEditor(a, defaults) {
@@ -685,6 +762,7 @@
         area: loc && loc.area !== 'shared' ? loc.area : '', locationId: defaults.locationId || '', positionId: '', coveringForTeacherId: '', note: ''
       };
     }
+    rememberFocus();
     ui.sheet = { kind: 'assignment', model: model, errors: [], warnings: [], isNew: !a, reassign: false, original: a ? a.teacherId : '' };
     renderLayer();
   }
@@ -727,7 +805,7 @@
     }).join('') + '</div>';
   }
   function reassignList(m) {
-    var others = activeTeachers().filter(function (t) { return t.role !== 'admin' && t.id !== m.teacherId; });
+    var others = activeTeachers().filter(function (t) { return t.id !== m.teacherId; });
     var candidate = { id: m.id, date: m.date, start: m.start, end: m.end };
     return '<div class="reassign" id="reassign-list"><div class="preview-label">Reassign this shift to</div><div class="people">' + others.map(function (t) {
       var busy = C.conflictsForCandidate(Object.assign({}, candidate, { teacherId: t.id }), state.assignments);
@@ -740,13 +818,13 @@
   }
   function sheetAssignment() {
     var s = ui.sheet, m = s.model;
-    var teachers = activeTeachers().filter(function (t) { return t.role !== 'admin' || t.id === m.teacherId; });
+    var teachers = state.teachers.filter(function (t) { return t.active !== false || t.id === m.teacherId; });
     var html = '<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title"><div class="grab"></div>' +
       '<div class="sheet-head"><h2 id="sheet-title">' + (s.isNew ? 'Add a shift' : 'Edit shift') + '</h2><button class="btn btn-sm btn-ghost" type="button" data-action="close-sheet">Cancel</button></div>' +
       '<form data-form="assignment" id="editor-form" novalidate>' +
       (s.errors.length ? '<div class="errors" role="alert"><ul>' + s.errors.map(function (e) { return '<li>' + esc(e) + '</li>'; }).join('') + '</ul></div>' : '') +
       '<div class="field"><label for="f-teacher">Who</label><select class="select" id="f-teacher" name="teacherId" autofocus><option value="">Choose a teacher</option>' +
-      optionList(teachers, m.teacherId, function (t) { return t.name + ' — usually ' + usualAreaWord(t) + ', ' + posLabel(t.usualPositionId); }) + '</select>' +
+      optionList(teachers, m.teacherId, function (t) { return t.name + (t.active === false ? ' (inactive)' : '') + ' — usually ' + usualAreaWord(t) + ', ' + posLabel(t.usualPositionId); }) + '</select>' +
       (!s.isNew ? '<button class="btn btn-sm btn-outline" type="button" data-action="reassign-open" style="justify-self:start">' + ICON.people + 'Reassign to someone else</button>' : '') + '</div>' +
       (s.reassign ? reassignList(m) : '') +
       '<div class="field"><label for="f-date">Date</label><div class="field-row"><input class="input" type="date" id="f-date" name="date" value="' + esc(m.date) + '">' +
@@ -755,8 +833,8 @@
       '<div class="field-row"><div class="field"><label for="f-start" class="sr-only">Start</label><input class="input" type="time" id="f-start" name="start" value="' + esc(m.start) + '" step="300" aria-label="Start time"></div>' +
       '<div class="field"><label for="f-end" class="sr-only">End</label><input class="input" type="time" id="f-end" name="end" value="' + esc(m.end) + '" step="300" aria-label="End time"></div></div></div>' +
       '<div class="field"><span class="label" id="f-area-label">Campus area for this shift</span><div class="seg" role="radiogroup" aria-labelledby="f-area-label">' +
-      '<label class="seg-pre"><input type="radio" name="area" value="preschool"' + (m.area === 'preschool' ? ' checked' : '') + '><span>' + ICON.blocks + 'Preschool</span></label>' +
-      '<label class="seg-el"><input type="radio" name="area" value="elementary"' + (m.area === 'elementary' ? ' checked' : '') + '><span>' + ICON.book + 'Elementary</span></label></div>' +
+      '<label class="seg-pre' + (m.area === 'preschool' ? ' is-checked' : '') + '"><input type="radio" name="area" value="preschool"' + (m.area === 'preschool' ? ' checked' : '') + '><span>' + ICON.blocks + 'Preschool</span></label>' +
+      '<label class="seg-el' + (m.area === 'elementary' ? ' is-checked' : '') + '"><input type="radio" name="area" value="elementary"' + (m.area === 'elementary' ? ' checked' : '') + '><span>' + ICON.book + 'Elementary</span></label></div>' +
       '<p class="hint" id="f-area-hint"></p></div>' +
       '<div class="field"><label for="f-location">Room or location</label><select class="select" id="f-location" name="locationId">' + locationOptions(m.area, m.locationId) + '</select></div>' +
       '<div class="field"><label for="f-position">Position for this shift</label><select class="select" id="f-position" name="positionId">' + positionOptions(m.area, m.positionId) + '</select><p class="hint">Set separately from the person’s usual role. The teacher sees exactly this label.</p></div>' +
@@ -846,6 +924,20 @@
     var m = readEditorForm();
     var val = C.validateAssignment(m, { locations: L(), positions: P() });
     if (val.errors.length) { ui.sheet.errors = val.errors; ui.sheet.model = m; ui.sheet.keepFocus = true; renderLayer(); return; }
+    var clashes = C.conflictsForCandidate(m, state.assignments);
+    if (publishNow && clashes.length) {
+      ui.sheet.model = m;
+      confirmDialog({
+        title: 'Publish a double-booked shift?',
+        body: esc(C.firstName(teacherName(m.teacherId))) + ' is already scheduled ' + esc(clashes.map(function (o) { return C.formatRange(o.start, o.end) + ' in ' + locName(o.locationId); }).join(' and ')) + '. They would see both. You can save it as a draft instead and fix the overlap first.',
+        confirmLabel: 'Publish anyway', cancelLabel: 'Go back', danger: true,
+        onConfirm: function () { ui.dialog = null; commitAssignment(m, true); }
+      });
+      return;
+    }
+    commitAssignment(m, publishNow);
+  }
+  function commitAssignment(m, publishNow) {
     m.updatedAt = nowStamp();
     if (!m.id) {
       m.id = C.newId('a'); m.published = null;
@@ -901,26 +993,31 @@
       });
     }
   }
+  // Copies last week's regular shifts as drafts. One-off cover shifts ("covering for someone") are skipped.
   function copyPrevWeek() {
     var ws = ui.adminWeek, prev = C.addDays(ws, -7);
-    var copies = state.assignments.filter(function (a) { return C.inWeek(a.date, prev); }).map(function (a) {
-      var c = Object.assign({}, a); c.id = C.newId('a'); c.date = C.addDays(a.date, 7); c.published = null; c.updatedAt = nowStamp(); c.note = ''; c.coveringForTeacherId = ''; return c;
+    var source = state.assignments.filter(function (a) { return C.inWeek(a.date, prev); });
+    var skipped = source.filter(function (a) { return !!a.coveringForTeacherId; }).length;
+    var copies = source.filter(function (a) { return !a.coveringForTeacherId; }).map(function (a) {
+      var c = Object.assign({}, a); c.id = C.newId('a'); c.date = C.addDays(a.date, 7); c.published = null; c.updatedAt = nowStamp(); c.note = ''; return c;
     });
     state.assignments = state.assignments.concat(copies);
-    markEdited(); save(); render(); toast(copies.length + ' shifts copied as drafts. Notes were cleared. Review, then publish.');
+    markEdited(); save(); render();
+    toast(copies.length + ' shifts copied as drafts' + (skipped ? ', ' + skipped + ' one-off cover shift' + (skipped === 1 ? '' : 's') + ' skipped' : '') + '. Notes were cleared.');
   }
 
   // ---------------------------------------------------------------- teacher editor sheet
   function openTeacherEditor(t) {
     var model = t ? Object.assign({}, t) : { id: null, name: '', role: 'teacher', usualArea: 'preschool', usualPositionId: '', usualLocationId: '', pin: '', active: true };
+    rememberFocus();
     ui.sheet = { kind: 'teacher', model: model, errors: [], isNew: !t };
     renderLayer();
   }
   function sheetTeacher() {
     var s = ui.sheet, m = s.model;
-    var shiftCount = m.id ? state.assignments.filter(function (a) { return a.teacherId === m.id; }).length : 0;
+    var shiftCount = m.id ? C.assignmentsReferencing(m.id, state.assignments).length : 0;
     var isSelf = session && session.teacherId === m.id;
-    function seg(name, value, label, cls) { return '<label class="' + (cls || '') + '"><input type="radio" name="' + name + '" value="' + value + '"' + (m[name] === value ? ' checked' : '') + '><span>' + label + '</span></label>'; }
+    function seg(name, value, label, cls) { return '<label class="' + (cls || '') + (m[name] === value ? ' is-checked' : '') + '"><input type="radio" name="' + name + '" value="' + value + '"' + (m[name] === value ? ' checked' : '') + '><span>' + label + '</span></label>'; }
     return '<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title"><div class="grab"></div>' +
       '<div class="sheet-head"><h2 id="sheet-title">' + (s.isNew ? 'Add a person' : 'Edit ' + esc(C.firstName(m.name))) + '</h2><button class="btn btn-sm btn-ghost" type="button" data-action="close-sheet">Cancel</button></div>' +
       '<form data-form="teacher" id="teacher-form" novalidate>' +
@@ -955,6 +1052,7 @@
     var errors = C.validateTeacher(m);
     if (!m.usualPositionId) errors.push('Choose a usual position.');
     if (session && session.teacherId === m.id && m.role !== 'admin') errors.push('You cannot remove your own admin access.');
+    if (session && session.teacherId === m.id && !m.active) errors.push('You cannot mark yourself inactive while logged in.');
     if (errors.length) { ui.sheet.errors = errors; ui.sheet.model = m; renderLayer(); return; }
     if (!m.id) { m.id = C.newId('t'); state.teachers.push(m); }
     else { var i = state.teachers.findIndex(function (t) { return t.id === m.id; }); if (i >= 0) state.teachers[i] = m; }
@@ -962,6 +1060,7 @@
   }
   function deleteTeacher(id) {
     var t = T()[id]; if (!t) return;
+    if (C.assignmentsReferencing(id, state.assignments).length) { toast(C.firstName(t.name) + ' is still on the schedule. Remove those shifts first.'); return; }
     confirmDialog({
       title: 'Remove ' + t.name + '?', body: 'They will no longer be able to log in. This cannot be undone.', confirmLabel: 'Remove', danger: true,
       onConfirm: function () { state.teachers = state.teachers.filter(function (x) { return x.id !== id; }); markEdited(); save(); ui.sheet = null; ui.dialog = null; render(); toast(t.name + ' removed.'); }
@@ -985,8 +1084,8 @@
     confirmDialog({
       title: 'Reset demo data?', body: 'Restores the sample week and staff. Anything you added or changed is removed.', confirmLabel: 'Reset', danger: true,
       onConfirm: function () {
-        var keepDemoToday = state.settings.demoToday;
-        state = freshState(); state.settings.demoToday = keepDemoToday; save();
+        var keepDemoToday = state.settings.demoToday, keepDemoTime = state.settings.demoTime;
+        state = freshState(); state.settings.demoToday = keepDemoToday; state.settings.demoTime = keepDemoTime; sanitizeSettings(state); save();
         if (session && !T()[session.teacherId]) { session = null; saveSession(); }
         ui.adminWeek = null; ui.adminDay = null; ui.boardDay = null; ui.dialog = null; ui.sheet = null; ui.teacherWeekOffset = null;
         render(); toast('Demo data reset.');
@@ -995,7 +1094,7 @@
   }
   function scrollToId(id) {
     var el = document.getElementById(id);
-    if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); el.classList.add('is-flash'); setTimeout(function () { el.classList.remove('is-flash'); }, 1500); }
+    if (el) { el.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' }); el.classList.add('is-flash'); setTimeout(function () { el.classList.remove('is-flash'); }, 1500); }
   }
 
   document.addEventListener('click', function (e) {
@@ -1003,15 +1102,20 @@
     if (!el) return;
     var action = el.getAttribute('data-action');
     switch (action) {
-      case 'nav': e.preventDefault(); ui.sheet = null; go(el.getAttribute('data-route')); break;
-      case 'scroll-to': e.preventDefault(); scrollToId(el.getAttribute('data-target')); break;
+      case 'nav': e.preventDefault(); ui.sheet = null; ui.dialog = null; ui.teacherWeekOffset = null; go(el.getAttribute('data-route')); break;
+      case 'scroll-to': {
+        e.preventDefault();
+        var setTo = el.getAttribute('data-set');
+        if (setTo !== null && Number(setTo) !== ui.teacherWeekOffset) { ui.teacherWeekOffset = Number(setTo); render(); }
+        scrollToId(el.getAttribute('data-target')); break;
+      }
       case 'login-pick': ui.loginPerson = el.getAttribute('data-id'); ui.loginError = ''; render();
-        var pin = document.getElementById('pin'); if (pin) { pin.scrollIntoView({ block: 'center', behavior: 'smooth' }); try { pin.focus({ preventScroll: true }); } catch (err) { /* ignore */ } } break;
+        var pin = document.getElementById('pin'); if (pin) { pin.scrollIntoView({ block: 'center', behavior: prefersReducedMotion() ? 'auto' : 'smooth' }); focusEl(pin); } break;
       case 'logout': logout(); break;
       case 'teacher-week': ui.teacherWeekOffset = Number(el.getAttribute('data-set')); render(); window.scrollTo(0, 0); break;
       case 'admin-week-nav': {
         var d = Number(el.getAttribute('data-delta'));
-        ui.adminWeek = d === 0 ? C.weekStart(todayISO()) : C.addDays(ui.adminWeek, 7 * d);
+        ui.adminWeek = d === 0 ? homeWeek() : C.addDays(ui.adminWeek, 7 * d);
         ui.adminDay = null; ui.boardDay = null; ensureAdminWeek(); render(); break;
       }
       case 'admin-day': ui.adminDay = el.getAttribute('data-date'); render(); break;
@@ -1077,20 +1181,40 @@
     if (e.target.closest('#editor-form')) updateEditorLive(e.target.name);
   });
   document.addEventListener('change', function (e) {
+    var seg = e.target.closest('.seg'); if (seg) syncSegmented(seg);
     if (e.target.closest('#editor-form')) { updateEditorLive(e.target.name); return; }
     var key = e.target.getAttribute && e.target.getAttribute('data-change');
     if (key === 'demo-today') {
       state.settings.demoToday = e.target.value || null; save();
       ui.adminWeek = null; ui.adminDay = null; ui.boardDay = null; ui.teacherWeekOffset = null;
-      render(); toast(state.settings.demoToday ? 'Today is now ' + C.formatDate(state.settings.demoToday, 'short') + ' (demo).' : 'Using the real date.');
+      render(); toast(state.settings.demoToday ? 'Today is now ' + C.formatDate(state.settings.demoToday, 'short') + ' (demo).' : 'Using the real date and time.');
+    } else if (key === 'demo-time') {
+      state.settings.demoTime = e.target.value || '10:00'; save(); render();
+      toast('The time is now ' + C.formatTime(state.settings.demoTime) + ' (demo).');
+    } else if (key === 'show-pins') {
+      state.settings.showDemoPins = !!e.target.checked; save();
     }
   });
+  // Escape closes only the top layer; Tab stays inside it.
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && (ui.sheet || ui.dialog)) { ui.dialog = null; ui.sheet = null; renderLayer(); }
+    if (!(ui.sheet || ui.dialog)) return;
+    if (e.key === 'Escape') {
+      if (ui.dialog) ui.dialog = null; else { ui.sheet = null; }
+      renderLayer(); return;
+    }
+    if (e.key === 'Tab') {
+      var box = document.querySelector(ui.dialog ? '.dialog' : '.sheet');
+      if (!box) return;
+      var f = box.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])');
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1], inside = box.contains(document.activeElement);
+      if (e.shiftKey && (document.activeElement === first || !inside)) { e.preventDefault(); focusEl(last); }
+      else if (!e.shiftKey && (document.activeElement === last || !inside)) { e.preventDefault(); focusEl(first); }
+    }
   });
   window.addEventListener('hashchange', function () {
     var h = readHash();
-    if (h && h !== ui.route) { ui.route = h; render(); }
+    if (h && h !== ui.route) { ui.sheet = null; ui.dialog = null; ui.route = h; render(); }
   });
 
   // ---------------------------------------------------------------- boot
