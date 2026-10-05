@@ -1,0 +1,13 @@
+{
+  "name": "staff-schedule-prototype",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Mobile-first staff scheduling prototype for a shared preschool + elementary school (teacher My Schedule, admin schedule builder, cross-coverage labeling).",
+  "scripts": {
+    "start": "npx --yes serve -l 5173 .",
+    "test": "node --test test/*.test.js",
+    "build:artifact": "node scripts/build-artifact.js",
+    "qa": "node scripts/qa.js"
+  },
+  "license": "MIT"
+}
