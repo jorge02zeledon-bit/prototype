@@ -283,7 +283,7 @@
     var layer = document.getElementById('layer');
     var app = document.getElementById('app');
     var html = '';
-    if (ui.sheet) html += '<div class="scrim" data-action="close-sheet"></div>' + (ui.sheet.kind === 'assignment' ? sheetAssignment() : sheetTeacher());
+    if (ui.sheet) html += '<div class="scrim" data-action="close-sheet"></div>' + (ui.sheet.kind === 'assignment' ? sheetAssignment() : ui.sheet.kind === 'location' ? sheetLocation() : sheetTeacher());
     if (ui.dialog) html += '<div class="scrim scrim-top" data-action="close-dialog"></div>' + viewDialog();
     layer.innerHTML = html;
     var open = !!(ui.sheet || ui.dialog);
@@ -707,7 +707,7 @@
 
   // ---------------------------------------------------------------- admin: staff
   function viewAdminStaff() {
-    var html = adminTop('Staff', '<button class="btn btn-sm btn-primary" type="button" data-action="new-teacher">' + ICON.plus + 'Add</button>');
+    var html = adminTop('Staff & rooms', '<button class="btn btn-sm btn-primary" type="button" data-action="new-teacher">' + ICON.plus + 'Add person</button>');
     html += '<p class="section-sub section" style="margin-top:14px">Set each person’s usual area and position. Every shift is compared against it, and anything outside their usual area is labeled “Covering…” on their schedule.</p>';
     html += '<div class="staff-list section">' + state.teachers.map(function (t) {
       return '<div class="staff-row' + (t.active === false ? ' is-inactive' : '') + '">' + avatar(t) +
@@ -716,8 +716,68 @@
         '<div class="s-actions"><button class="btn btn-sm btn-outline" type="button" data-action="edit-teacher" data-id="' + esc(t.id) + '">Edit</button>' +
         '<a class="btn btn-sm btn-ghost" href="#preview-' + esc(t.id) + '" data-action="nav" data-route="preview-' + esc(t.id) + '">View as</a></div></div>';
     }).join('') + '</div>';
+    var areaName = { preschool: 'Preschool', elementary: 'Elementary', shared: 'Shared' };
+    html += '<section class="section"><div class="section-head"><h2 class="eyebrow">Rooms & locations</h2><button class="btn btn-sm btn-outline" type="button" data-action="new-location">' + ICON.plus + 'Add a room</button></div>' +
+      '<p class="section-sub" style="margin-bottom:10px">Names and directions appear exactly like this on every teacher\u2019s card.</p>' +
+      '<div class="staff-list">' + state.locations.map(function (l) {
+        return '<div class="staff-row"><span class="avatar ' + (l.area === 'preschool' ? 'pre' : l.area === 'elementary' ? 'el' : '') + '" aria-hidden="true">' + ICON.pin + '</span>' +
+          '<div><div class="s-name">' + esc(l.name) + '</div><div class="s-sub">' + esc(areaName[l.area] || l.area) + (l.detail ? ' \u00b7 ' + esc(l.detail) : '') + '</div></div>' +
+          '<div class="s-actions"><button class="btn btn-sm btn-outline" type="button" data-action="edit-location" data-id="' + esc(l.id) + '">Edit</button></div></div>';
+      }).join('') + '</div></section>';
     html += adminTabs('admin-staff');
     return html;
+  }
+
+  // ---------------------------------------------------------------- location editor sheet
+  function openLocationEditor(l) {
+    var model = l ? Object.assign({}, l) : { id: null, name: '', area: 'preschool', detail: '' };
+    rememberFocus();
+    ui.sheet = { kind: 'location', model: model, errors: [], isNew: !l };
+    renderLayer();
+  }
+  function sheetLocation() {
+    var s = ui.sheet, m = s.model;
+    var used = m.id ? state.assignments.filter(function (a) { return a.locationId === m.id || (a.published && a.published.locationId === m.id); }).length : 0;
+    function seg(value, label, cls) { return '<label class="' + (cls || '') + (m.area === value ? ' is-checked' : '') + '"><input type="radio" name="area" value="' + value + '"' + (m.area === value ? ' checked' : '') + '><span>' + label + '</span></label>'; }
+    return '<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title"><div class="grab"></div>' +
+      '<div class="sheet-head"><h2 id="sheet-title">' + (s.isNew ? 'Add a room' : 'Edit ' + esc(m.name)) + '</h2><button class="btn btn-sm btn-ghost" type="button" data-action="close-sheet">Cancel</button></div>' +
+      '<form data-form="location" id="location-form" novalidate>' +
+      (s.errors.length ? '<div class="errors" role="alert"><ul>' + s.errors.map(function (e) { return '<li>' + esc(e) + '</li>'; }).join('') + '</ul></div>' : '') +
+      '<div class="field"><label for="l-name">Room or location name</label><input class="input" id="l-name" name="name" value="' + esc(m.name) + '" autofocus autocomplete="off" placeholder="Butterfly Room"></div>' +
+      '<div class="field"><span class="label" id="l-area-label">Which building or area</span><div class="seg" role="radiogroup" aria-labelledby="l-area-label">' +
+      seg('preschool', ICON.blocks + 'Preschool', 'seg-pre') + seg('elementary', ICON.book + 'Elementary', 'seg-el') + seg('shared', 'Shared') + '</div>' +
+      '<p class="hint">Shared spaces (cafeteria, office) can be used for either area without a warning.</p></div>' +
+      '<div class="field"><label for="l-detail">How to find it (optional)</label><input class="input" id="l-detail" name="detail" value="' + esc(m.detail || '') + '" placeholder="Preschool building, first door on the left"><p class="hint">How would you tell a new person to find this room? Shown under the room name on their card.</p></div>' +
+      '<div class="sheet-actions"><button class="btn btn-primary btn-block" type="submit">' + (s.isNew ? 'Add room' : 'Save') + '</button>' +
+      (s.isNew ? '' : (used ? '<p class="hint" style="text-align:center">' + esc(m.name) + ' is used by ' + used + ' shift' + (used === 1 ? '' : 's') + ', so it cannot be removed. Renaming it updates those shifts.</p>'
+        : '<button class="btn btn-danger btn-block" type="button" data-action="delete-location" data-id="' + esc(m.id) + '">Remove this room</button>')) +
+      '</div></form></div>';
+  }
+  function saveLocation() {
+    var fd = new FormData(document.getElementById('location-form'));
+    var m = Object.assign({}, ui.sheet.model);
+    m.name = String(fd.get('name') || '').trim();
+    m.area = String(fd.get('area') || 'shared');
+    m.detail = String(fd.get('detail') || '').trim();
+    var errors = [];
+    if (!m.name) errors.push('Enter a name for the room.');
+    if (state.locations.some(function (l) { return l.id !== m.id && l.name.toLowerCase() === m.name.toLowerCase(); })) errors.push('There is already a room called ' + m.name + '.');
+    if (errors.length) { ui.sheet.errors = errors; ui.sheet.model = m; ui.sheet.keepFocus = true; renderLayer(); return; }
+    if (!m.id) { m.id = C.newId('loc'); state.locations.push(m); }
+    else { var i = state.locations.findIndex(function (l) { return l.id === m.id; }); if (i >= 0) state.locations[i] = m; }
+    markEdited(); save(); ui.sheet = null; render(); toast(m.name + ' saved.');
+  }
+  function deleteLocation(id) {
+    var l = L()[id]; if (!l) return;
+    if (state.assignments.some(function (a) { return a.locationId === id || (a.published && a.published.locationId === id); })) { toast(l.name + ' is still used by shifts.'); return; }
+    confirmDialog({
+      title: 'Remove ' + l.name + '?', body: 'It will no longer appear when adding shifts. This cannot be undone.', confirmLabel: 'Remove', danger: true,
+      onConfirm: function () {
+        state.locations = state.locations.filter(function (x) { return x.id !== id; });
+        state.teachers.forEach(function (t) { if (t.usualLocationId === id) t.usualLocationId = ''; });
+        markEdited(); save(); ui.sheet = null; ui.dialog = null; render(); toast(l.name + ' removed.');
+      }
+    });
   }
 
   // ---------------------------------------------------------------- admin: menu
@@ -1149,6 +1209,9 @@
         break;
       }
       case 'new-teacher': openTeacherEditor(null); break;
+      case 'new-location': openLocationEditor(null); break;
+      case 'edit-location': openLocationEditor(L()[el.getAttribute('data-id')]); break;
+      case 'delete-location': deleteLocation(el.getAttribute('data-id')); break;
       case 'edit-teacher': openTeacherEditor(T()[el.getAttribute('data-id')]); break;
       case 'delete-teacher': deleteTeacher(el.getAttribute('data-id')); break;
       case 'close-sheet': ui.sheet = null; renderLayer(); break;
@@ -1167,6 +1230,7 @@
     if (kind === 'login') login(ui.loginPerson, new FormData(f).get('pin'));
     else if (kind === 'assignment') saveAssignment(e.submitter && e.submitter.getAttribute('data-publish') === '1');
     else if (kind === 'teacher') saveTeacher();
+    else if (kind === 'location') saveLocation();
     else if (kind === 'settings') {
       var fd = new FormData(f);
       state.settings.schoolName = String(fd.get('schoolName') || '').trim() || state.settings.schoolName;

@@ -346,6 +346,21 @@ function check(cond, msg) { if (cond) console.log('  ok   ' + msg); else { conso
   await p2.waitForTimeout(100);
   check(await p2.locator('.sheet').count() === 1, 'going back keeps the editor open');
   await p2.locator('.sheet button', { hasText: 'Cancel' }).click();
+  // Rooms: rename Butterfly Room and see the new name on Maria's card
+  await p2.locator('.tab', { hasText: 'Staff' }).click();
+  await p2.locator('button[data-action=edit-location][data-id=loc_butterfly]').click();
+  await p2.waitForSelector('#location-form');
+  await p2.fill('#l-name', 'Ladybug Room');
+  await p2.locator('#location-form button[type=submit]').click();
+  await p2.waitForTimeout(150);
+  t = await text2();
+  check(t.includes('Ladybug Room') && !t.includes('Butterfly Room'), 'room renamed in the rooms list');
+  await p2.locator('.staff-row', { hasText: 'Maria Lopez' }).locator('a', { hasText: 'View as' }).click();
+  await p2.waitForSelector('.preview-banner');
+  t = await text2();
+  check(t.includes('Ladybug Room'), 'renamed room shows on the teacher card');
+  await p2.locator('a', { hasText: 'Back to admin' }).click();
+  await p2.waitForSelector('.staff-list');
   // Inactive teacher: their existing shift still opens with "Who" filled
   await p2.locator('.tab', { hasText: 'Staff' }).click();
   await p2.locator('.staff-row', { hasText: 'Tom Nguyen' }).locator('button', { hasText: 'Edit' }).click();

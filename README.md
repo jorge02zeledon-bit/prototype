@@ -56,8 +56,8 @@ Who (shows usual area and position) · Reassign to someone else (lists everyone 
 ### 5. Admin: Day board (Who is where)
 Pick a day; every room grouped by Preschool, Elementary and Shared spaces with the people in it, their times, position, coverage badge, and draft markers. Empty rooms say "No one assigned · add someone" and open the editor pre-filled.
 
-### 6. Admin: Staff
-List of people with usual area, usual position, usual room. Add/edit (name, usual area incl. Both, usual position, usual room, PIN, role, active). **View as** opens that person's My Schedule in preview mode with drafts marked.
+### 6. Admin: Staff & rooms
+List of people with usual area, usual position, usual room. Add/edit (name, usual area incl. Both, usual position, usual room, PIN, role, active). **View as** opens that person's My Schedule in preview mode with drafts marked. Below it, **Rooms & locations**: rename a room, set its building or area (Preschool, Elementary, Shared), and write the "how to find it" line that appears under the room name on every card. Renaming updates every shift that uses the room; a room in use cannot be removed.
 
 ### 7. Admin: Menu
 School name, your name (used on notes), phone, contact text; demo controls; reset demo data; log out.
