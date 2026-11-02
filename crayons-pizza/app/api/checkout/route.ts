@@ -1,0 +1,66 @@
+import { NextResponse } from "next/server";
+import { cartLines, cartTotals, sanitizeCart } from "@/lib/cart";
+import { STORE } from "@/lib/menu";
+import { getPaymentProvider } from "@/lib/payments";
+import type { CheckoutRequest } from "@/lib/payments";
+import { siteOrigin } from "@/lib/site";
+
+export const runtime = "nodejs";
+
+type Body = {
+  cart?: unknown;
+  customer?: { name?: unknown; phone?: unknown; email?: unknown };
+  pickupInMinutes?: unknown;
+  note?: unknown;
+};
+
+/**
+ * POST /api/checkout
+ * Body: { cart: {cheese: 2}, customer: {name, phone, email?}, pickupInMinutes, note? }
+ * Returns: { url } to redirect the browser to, or { errors } with field messages.
+ */
+export async function POST(request: Request) {
+  let body: Body;
+  try {
+    body = (await request.json()) as Body;
+  } catch {
+    return NextResponse.json({ errors: { form: "Request body must be JSON." } }, { status: 400 });
+  }
+
+  const cart = sanitizeCart(body.cart);
+  const lines = cartLines(cart);
+  const name = String(body.customer?.name ?? "").trim();
+  const phone = String(body.customer?.phone ?? "").trim();
+  const email = String(body.customer?.email ?? "").trim();
+  const note = String(body.note ?? "").trim().slice(0, 300);
+  const pickupInMinutes = Number(body.pickupInMinutes);
+
+  const errors: Record<string, string> = {};
+  if (lines.length === 0) errors.cart = "Add at least one slice first.";
+  if (name.length < 2) errors.name = "Enter the name for the order.";
+  if (phone.replace(/\D/g, "").length < 10) errors.phone = "Enter a 10-digit phone number.";
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = "That email address does not look right.";
+  if (!(STORE.pickupSlotsMinutes as readonly number[]).includes(pickupInMinutes)) errors.pickup = "Choose a pickup time.";
+  if (Object.keys(errors).length) return NextResponse.json({ errors }, { status: 422 });
+
+  const origin = siteOrigin(request.url);
+  const req: CheckoutRequest = {
+    lines,
+    totalCents: cartTotals(cart).totalCents,
+    currency: "usd",
+    customer: { name, phone, email: email || undefined },
+    pickupInMinutes,
+    note: note || undefined,
+    successUrl: `${origin}/order/success`,
+    cancelUrl: `${origin}/order/cancelled`,
+  };
+
+  try {
+    const session = await getPaymentProvider().createCheckout(req);
+    return NextResponse.json({ url: session.url, sessionId: session.sessionId });
+  } catch (err) {
+    console.error("checkout failed", err);
+    const message = err instanceof Error ? err.message : "Payment could not be started.";
+    return NextResponse.json({ errors: { form: message } }, { status: 502 });
+  }
+}

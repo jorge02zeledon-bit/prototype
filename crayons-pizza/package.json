@@ -1,0 +1,27 @@
+{
+  "name": "crayons-pizza",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Crayons Pizza online ordering: Next.js storefront with a pluggable payment layer (Stripe Checkout wired in, Chase stub).",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "next": "16.4.4",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "stripe": "23.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "typescript": "^5"
+  },
+  "engines": { "node": ">=20" }
+}
