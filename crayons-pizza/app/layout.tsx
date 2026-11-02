@@ -5,7 +5,12 @@ import { Header } from "@/components/Header";
 import { CartDrawer } from "@/components/CartDrawer";
 import { STORE } from "@/lib/menu";
 
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000");
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: { default: STORE.name, template: `%s | ${STORE.name}` },
   description: `${STORE.name}: cheese and pepperoni slices, six dollars each. Order online, pick up hot at ${STORE.address}.`,
 };
