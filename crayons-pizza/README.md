@@ -1,6 +1,6 @@
 # Crayons Pizza
 
-Online ordering for a pizza shop with two slices on the menu, Cheese and Pepperoni, at $6.00 each. Customers pick quantities, enter pickup details, pay on a hosted checkout page, and get an order confirmation. Built with Next.js so it deploys to Vercel as is.
+Online ordering for a pizza shop in Davie, Florida with one slice on the menu, Cheese, at $6.00. Customers pick quantities, enter pickup details, pay on a hosted checkout page, and get an order confirmation. Built with Next.js so it deploys to Vercel as is.
 
 Payments go through a small provider interface. **Stripe Checkout is implemented**, a **mock provider** lets you run the whole flow with no keys, and a **Chase stub** marks where that integration goes.
 

@@ -12,7 +12,7 @@ const siteUrl =
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: { default: STORE.name, template: `%s | ${STORE.name}` },
-  description: `${STORE.name}: cheese and pepperoni slices, six dollars each. Order online, pick up hot at ${STORE.address}.`,
+  description: `${STORE.name}: cheese slices, six dollars each. Order online, pick up hot at ${STORE.address}.`,
 };
 
 export const viewport: Viewport = {

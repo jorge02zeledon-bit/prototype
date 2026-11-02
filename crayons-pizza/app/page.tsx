@@ -16,7 +16,7 @@ export default function HomePage() {
             <span>slices.</span>
           </h1>
           <p className="hero-sub">
-            Cheese or pepperoni on 72-hour dough, cut big, {price} each. Order here, pick it up hot at {STORE.address}.
+            Cheese on 72-hour dough, cut big, {price} a slice. Order here, pick it up hot at {STORE.address} in Davie.
           </p>
           <div className="hero-cta">
             <OrderButton />
@@ -24,13 +24,13 @@ export default function HomePage() {
           </div>
         </div>
         <div className="hero-art" aria-hidden="true">
-          <Image src="/images/pepperoni.svg" alt="" width={900} height={900} priority />
+          <Image src="/images/cheese.svg" alt="" width={900} height={900} priority />
         </div>
       </section>
 
       <div className="band" role="presentation">
-        <span>Two slices on the menu.</span>
-        <span>Both {price}.</span>
+        <span>One slice on the menu.</span>
+        <span>Always {price}.</span>
         <span>Ready in fifteen minutes.</span>
       </div>
 
@@ -42,7 +42,7 @@ export default function HomePage() {
           <ol className="steps">
             <li>
               <strong>Pick your slices.</strong>
-              <span>Any mix of cheese and pepperoni, up to fifty of each.</span>
+              <span>As many as you need, up to fifty per order.</span>
             </li>
             <li>
               <strong>Pay online.</strong>

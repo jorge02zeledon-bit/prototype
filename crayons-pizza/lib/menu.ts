@@ -21,22 +21,12 @@ export const MENU: readonly MenuItem[] = [
   {
     id: "cheese",
     name: "Cheese",
-    tagline: "The one everything else is measured against.",
+    tagline: "One slice. Done right, every time.",
     description:
       "72-hour dough, crushed San Marzano tomatoes, whole-milk mozzarella, a little pecorino, basil out of the oven.",
     priceCents: SLICE_PRICE_CENTS,
     note: "Vegetarian",
     image: "/images/cheese.svg",
-  },
-  {
-    id: "pepperoni",
-    name: "Pepperoni",
-    tagline: "Cup-and-char. Curls up, crisps, pools a little oil.",
-    description:
-      "Our cheese slice with natural-casing pepperoni laid on thick enough that every bite gets one.",
-    priceCents: SLICE_PRICE_CENTS,
-    note: "House favorite",
-    image: "/images/pepperoni.svg",
   },
 ] as const;
 
@@ -49,8 +39,8 @@ export function findMenuItem(id: string): MenuItem | undefined {
 export const STORE = {
   name: "Crayons Pizza",
   tagline: "Every slice, six dollars.",
-  address: "118 Elm Street",
-  city: "Your Town, ST 00000",
+  address: "11406 W State Rd 84",
+  city: "Davie, Florida 33325",
   phone: "(555) 010-0118",
   hours: [
     { days: "Monday to Thursday", open: "11:00 AM", close: "9:00 PM" },
