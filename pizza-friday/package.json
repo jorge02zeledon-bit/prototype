@@ -1,0 +1,12 @@
+{
+  "name": "pizza-friday",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pizza Friday: a small ecommerce storefront selling cheese and pepperoni slices at $6 each. Static site, no build step.",
+  "scripts": {
+    "start": "npx --yes serve -l 5174 .",
+    "test": "node --test test/*.test.js",
+    "qa": "node scripts/qa.js"
+  },
+  "license": "MIT"
+}

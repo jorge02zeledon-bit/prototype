@@ -1,5 +1,7 @@
 # Hillside Staff Schedule (prototype)
 
+> This repo also holds **Pizza Friday**, a small pizza-slice storefront prototype, in [`pizza-friday/`](pizza-friday/README.md).
+
 A mobile-first staff scheduling prototype for a small preschool and elementary school that share staff. Teachers open it on a phone and see, in one glance, **where they are today, what position they are in, and whether they are covering the other age group**. The director builds the week, assigns anyone to either area, sets the position for that shift separately from the person's usual role, sees double-bookings, and publishes so each teacher sees only their own shifts.
 
 - Static web app, no build step: `index.html` + `styles.css` + `core.js` (pure logic) + `seed.js` (sample week) + `app.js` (UI).

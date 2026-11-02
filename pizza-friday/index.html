@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Pizza Friday</title>
+<meta name="description" content="Pizza Friday: cheese and pepperoni slices, $6 each. Order online, pick up hot.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,700;0,9..144,900;1,9..144,700&family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip" href="#menu">Skip to menu</a>
+
+<header class="topbar">
+  <a class="brand" href="#top" aria-label="Pizza Friday home">
+    <span class="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 48 48" width="34" height="34"><path d="M24 4 44 40H4Z" fill="var(--crust)"/><path d="M24 10 39 37H9Z" fill="var(--sauce)"/><circle cx="20" cy="27" r="3.2" fill="var(--pep)"/><circle cx="29" cy="31" r="3.2" fill="var(--pep)"/><circle cx="24" cy="20" r="2.6" fill="var(--pep)"/></svg>
+    </span>
+    <span class="brand-text">Pizza <em>Friday</em></span>
+  </a>
+  <nav class="topnav" aria-label="Site">
+    <a href="#menu">Menu</a>
+    <a href="#how">How it works</a>
+    <a href="#faq">FAQ</a>
+  </nav>
+  <button class="cart-btn" id="cart-btn" type="button" aria-haspopup="dialog" aria-controls="cart" aria-expanded="false">
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6h15l-1.5 9h-12z"/><path d="M6 6 5 3H2"/><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/></svg>
+    <span class="cart-label">Cart</span>
+    <span class="cart-count" id="cart-count" aria-live="polite">0</span>
+  </button>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="hero-copy">
+      <p class="eyebrow">Fridays only · pickup</p>
+      <h1>Two slices. One price. <span class="nowrap">Every Friday.</span></h1>
+      <p class="lede">Cheese or pepperoni, baked in a deck oven and cut big. <strong>$6 a slice</strong>, no fees, no surprises. Order ahead and it's hot when you walk in.</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="#menu">Order slices</a>
+        <a class="btn btn-ghost" href="#how">How pickup works</a>
+      </div>
+      <dl class="hero-facts">
+        <div><dt>Lunch</dt><dd>11:30 AM – 1:30 PM</dd></div>
+        <div><dt>Dinner</dt><dd>5:00 PM – 7:30 PM</dd></div>
+        <div><dt>Where</dt><dd>The side door, 118 Elm St.</dd></div>
+      </dl>
+    </div>
+    <div class="hero-art" aria-hidden="true">
+      <svg viewBox="0 0 320 320" class="pizza-svg">
+        <circle cx="160" cy="160" r="150" fill="var(--crust)"/>
+        <circle cx="160" cy="160" r="128" fill="var(--sauce)"/>
+        <circle cx="160" cy="160" r="122" fill="var(--cheese)"/>
+        <g fill="var(--pep)">
+          <circle cx="110" cy="110" r="18"/><circle cx="200" cy="95" r="18"/><circle cx="235" cy="170" r="18"/>
+          <circle cx="160" cy="160" r="18"/><circle cx="105" cy="200" r="18"/><circle cx="185" cy="235" r="18"/>
+        </g>
+        <g stroke="var(--crust)" stroke-width="3" opacity=".75"><path d="M160 10v300M10 160h300M54 54l212 212M266 54 54 266"/></g>
+      </svg>
+    </div>
+  </section>
+
+  <section class="menu" id="menu" aria-labelledby="menu-h">
+    <div class="section-head">
+      <h2 id="menu-h">The menu</h2>
+      <p>Short on purpose. Both slices are <strong>$6.00</strong>.</p>
+    </div>
+    <div class="menu-grid" id="menu-grid"></div>
+  </section>
+
+  <section class="how" id="how" aria-labelledby="how-h">
+    <h2 id="how-h">How it works</h2>
+    <ol class="steps">
+      <li><strong>Pick your slices.</strong> Mix cheese and pepperoni any way you like.</li>
+      <li><strong>Choose a pickup time.</strong> Lunch or dinner windows, every 30 minutes.</li>
+      <li><strong>Pay at the window.</strong> Cash or card when you grab the box. We text you when it is ready.</li>
+    </ol>
+  </section>
+
+  <section class="faq" id="faq" aria-labelledby="faq-h">
+    <h2 id="faq-h">Questions</h2>
+    <details><summary>Is it really just $6?</summary><p>Yes. The price on the menu is the price you pay. No service fee, no tax added at checkout.</p></details>
+    <details><summary>Can I order for a group?</summary><p>Up to 50 of each slice per order. For more than that, text us a day ahead.</p></details>
+    <details><summary>Do you deliver?</summary><p>Not yet. Pickup only at the side door on Elm Street.</p></details>
+    <details><summary>What if I'm late?</summary><p>We hold orders for 30 minutes past your slot, then they go to the walk-up line.</p></details>
+  </section>
+</main>
+
+<footer class="footer">
+  <p>Pizza Friday · 118 Elm St. · Fridays only.</p>
+  <p class="muted">Demo storefront. Orders here are not sent to a kitchen and no payment is collected.</p>
+</footer>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="cart" id="cart" role="dialog" aria-modal="true" aria-labelledby="cart-title" hidden>
+  <div class="cart-head">
+    <h2 id="cart-title">Your order</h2>
+    <button class="icon-btn" id="cart-close" type="button" aria-label="Close cart">&times;</button>
+  </div>
+  <div class="cart-body" id="cart-body"></div>
+</aside>
+
+<div id="toast-region" aria-live="polite"></div>
+
+<script src="core.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
