@@ -6,6 +6,8 @@ import type { CartLine } from "../cart.ts";
  */
 export type CheckoutRequest = {
   lines: CartLine[];
+  /** "subscription" when any line recurs; one-off lines ride along as one-time charges. */
+  mode: "payment" | "subscription";
   totalCents: number;
   currency: "usd";
   customer: {
@@ -13,7 +15,8 @@ export type CheckoutRequest = {
     email?: string;
     phone: string;
   };
-  pickupInMinutes: number;
+  /** YYYY-MM-DD. Pickup Friday for one-off lines, first Friday for subscriptions. */
+  pickupDate: string;
   note?: string;
   /** Absolute URLs the provider sends the customer back to. */
   successUrl: string;
@@ -31,12 +34,13 @@ export type PaidOrder = {
   provider: string;
   sessionId: string;
   status: "paid" | "unpaid" | "unknown";
+  mode: "payment" | "subscription";
   totalCents: number;
   currency: string;
   customer: { name?: string; email?: string; phone?: string };
-  pickupInMinutes?: number;
+  pickupDate?: string;
   note?: string;
-  lines: { name: string; qty: number; unitCents: number }[];
+  lines: { name: string; qty: number; unitCents: number; recurring?: string }[];
 };
 
 export type WebhookResult =

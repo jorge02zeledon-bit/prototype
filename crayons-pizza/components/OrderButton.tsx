@@ -7,13 +7,13 @@ export function OrderButton() {
   if (count > 0) {
     return (
       <button type="button" className="btn btn-primary" onClick={open}>
-        Check out {count} slice{count === 1 ? "" : "s"}
+        Check out
       </button>
     );
   }
   return (
     <a className="btn btn-primary" href="#menu">
-      Order slices
+      Pick a Friday
     </a>
   );
 }

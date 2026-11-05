@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { cartLines, cartTotals, sanitizeCart } from "@/lib/cart";
+import { cartLines, cartTotals, hasSubscription, sanitizeCart } from "@/lib/cart";
+import { isSelectableFriday, todayInZone } from "@/lib/fridays";
 import { STORE } from "@/lib/menu";
 import { getPaymentProvider } from "@/lib/payments";
 import type { CheckoutRequest } from "@/lib/payments";
@@ -10,13 +11,13 @@ export const runtime = "nodejs";
 type Body = {
   cart?: unknown;
   customer?: { name?: unknown; phone?: unknown; email?: unknown };
-  pickupInMinutes?: unknown;
+  pickupDate?: unknown;
   note?: unknown;
 };
 
 /**
  * POST /api/checkout
- * Body: { cart: {cheese: 2}, customer: {name, phone, email?}, pickupInMinutes, note? }
+ * Body: { cart: {cheese: 2, "friday-club": 1}, customer: {name, phone, email?}, pickupDate: "YYYY-MM-DD", note? }
  * Returns: { url } to redirect the browser to, or { errors } with field messages.
  */
 export async function POST(request: Request) {
@@ -33,23 +34,25 @@ export async function POST(request: Request) {
   const phone = String(body.customer?.phone ?? "").trim();
   const email = String(body.customer?.email ?? "").trim();
   const note = String(body.note ?? "").trim().slice(0, 300);
-  const pickupInMinutes = Number(body.pickupInMinutes);
+  const pickupDate = body.pickupDate;
+  const today = todayInZone(STORE.timeZone);
 
   const errors: Record<string, string> = {};
-  if (lines.length === 0) errors.cart = "Add at least one slice first.";
+  if (lines.length === 0) errors.cart = "Add a slice or a subscription first.";
   if (name.length < 2) errors.name = "Enter the name for the order.";
   if (phone.replace(/\D/g, "").length < 10) errors.phone = "Enter a 10-digit phone number.";
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = "That email address does not look right.";
-  if (!(STORE.pickupSlotsMinutes as readonly number[]).includes(pickupInMinutes)) errors.pickup = "Choose a pickup time.";
+  if (!isSelectableFriday(pickupDate, today, STORE.maxWeeksAhead)) errors.pickupDate = "Choose a Friday on the calendar.";
   if (Object.keys(errors).length) return NextResponse.json({ errors }, { status: 422 });
 
   const origin = siteOrigin(request.url);
   const req: CheckoutRequest = {
     lines,
+    mode: hasSubscription(cart) ? "subscription" : "payment",
     totalCents: cartTotals(cart).totalCents,
     currency: "usd",
     customer: { name, phone, email: email || undefined },
-    pickupInMinutes,
+    pickupDate: pickupDate as string,
     note: note || undefined,
     successUrl: `${origin}/order/success`,
     cancelUrl: `${origin}/order/cancelled`,

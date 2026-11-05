@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ClearCart } from "@/components/ClearCart";
 import { formatMoney } from "@/lib/cart";
+import { formatFriday, isISODate } from "@/lib/fridays";
 import { STORE } from "@/lib/menu";
 import { getPaymentProvider } from "@/lib/payments";
 
@@ -23,16 +24,20 @@ export default async function SuccessPage({ searchParams }: { searchParams: Prom
   }
 
   const paid = order.status === "paid";
+  const sub = order.mode === "subscription";
   const ref = order.sessionId.slice(-6).toUpperCase();
+  const when = order.pickupDate && isISODate(order.pickupDate) ? formatFriday(order.pickupDate) : null;
   return (
     <main className="page narrow">
       <ClearCart />
-      <p className="kicker">{paid ? "Paid" : "Payment pending"}</p>
-      <h1 className="h2">{paid ? "Your slices are on the way to the oven." : "We are waiting on the payment."}</h1>
+      <p className="kicker">{paid ? (sub ? "Subscribed" : "Paid") : "Payment pending"}</p>
+      <h1 className="h2">
+        {!paid ? "We are waiting on the payment." : sub ? "Your Fridays are set." : "Your slice is on the books."}
+      </h1>
       <p>
         {order.customer.name ? `Thanks, ${order.customer.name}. ` : ""}
-        {order.pickupInMinutes ? `Pick up in about ${order.pickupInMinutes} minutes at ${STORE.address}. ` : ""}
-        Say your name at the counter.
+        {when ? (sub ? `First slice ${when}, then every Friday after. ` : `Pick up ${when}. `) : ""}
+        {STORE.fridayPickup.open} to {STORE.fridayPickup.close} at {STORE.address}. Say your name at the counter.
       </p>
       <div className="receipt">
         <div className="receipt-ref">
@@ -43,20 +48,22 @@ export default async function SuccessPage({ searchParams }: { searchParams: Prom
           {order.lines.map((l, i) => (
             <li key={i}>
               <span>
-                {l.qty} × {l.name} slice
+                {l.qty} × {l.name}
+                {l.recurring ? ` (${l.recurring})` : ""}
               </span>
               <span>{formatMoney(l.unitCents * l.qty)}</span>
             </li>
           ))}
         </ul>
         <div className="receipt-total">
-          <span>{paid ? "Paid" : "Total"}</span>
+          <span>{paid ? (sub ? "Paid today" : "Paid") : "Total"}</span>
           <span>{formatMoney(order.totalCents)}</span>
         </div>
+        {sub ? <p className="receipt-note">Renews every 4 weeks. Cancel any time by calling {STORE.phone}.</p> : null}
         {order.note ? <p className="receipt-note">Note: {order.note}</p> : null}
         {order.customer.email ? <p className="receipt-note">A receipt is on its way to {order.customer.email}.</p> : null}
       </div>
-      <Link className="btn btn-ghost" href="/">Order more</Link>
+      <Link className="btn btn-ghost" href="/">Back to the menu</Link>
     </main>
   );
 }

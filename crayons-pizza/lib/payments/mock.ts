@@ -36,12 +36,18 @@ export function createMockProvider(signingSecret: string): PaymentProvider {
         provider: "mock",
         sessionId,
         status: "unpaid",
+        mode: req.mode,
         totalCents: req.totalCents,
         currency: req.currency,
         customer: req.customer,
-        pickupInMinutes: req.pickupInMinutes,
+        pickupDate: req.pickupDate,
         note: req.note,
-        lines: req.lines.map((l) => ({ name: l.name, qty: l.qty, unitCents: l.unitCents })),
+        lines: req.lines.map((l) => ({
+          name: l.name,
+          qty: l.qty,
+          unitCents: l.unitCents,
+          ...(l.billing ? { recurring: l.billing.label } : {}),
+        })),
       };
       const token = encode(order);
       const paidToken = encode({ ...order, status: "paid" });

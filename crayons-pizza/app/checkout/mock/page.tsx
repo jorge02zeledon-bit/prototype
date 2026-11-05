@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { formatMoney } from "@/lib/cart";
+import { formatFriday, isISODate } from "@/lib/fridays";
 import { getPaymentProvider } from "@/lib/payments";
 import { siteOrigin } from "@/lib/site";
 import { headers } from "next/headers";
@@ -33,6 +34,7 @@ export default async function MockCheckoutPage({
     );
   }
 
+  const when = order.pickupDate && isISODate(order.pickupDate) ? formatFriday(order.pickupDate, "short") : "";
   return (
     <main className="page narrow mock">
       <p className="kicker">Test mode</p>
@@ -46,18 +48,19 @@ export default async function MockCheckoutPage({
           {order.lines.map((l, i) => (
             <li key={i}>
               <span>
-                {l.qty} × {l.name} slice
+                {l.qty} × {l.name}
+                {l.recurring ? ` (${l.recurring})` : ""}
               </span>
               <span>{formatMoney(l.unitCents * l.qty)}</span>
             </li>
           ))}
         </ul>
         <div className="receipt-total">
-          <span>Total</span>
+          <span>{order.mode === "subscription" ? "Due today" : "Total"}</span>
           <span>{formatMoney(order.totalCents)}</span>
         </div>
         <p className="receipt-note">
-          {order.customer.name}, {order.customer.phone}, pickup in {order.pickupInMinutes} min
+          {order.customer.name}, {order.customer.phone}, {order.mode === "subscription" ? "first Friday" : "pickup"} {when}
         </p>
       </div>
       <div className="row">

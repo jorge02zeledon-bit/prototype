@@ -1,14 +1,17 @@
-import { MAX_QTY_PER_ITEM, MENU, findMenuItem } from "./menu.ts";
+import { MAX_QTY_PER_ITEM, MENU, findProduct, type ProductKind } from "./menu.ts";
 
-/** Cart shape stored in the browser: item id -> quantity. */
+/** Cart shape stored in the browser: product id -> quantity. */
 export type Cart = Record<string, number>;
 
 export type CartLine = {
   id: string;
+  kind: ProductKind;
   name: string;
   qty: number;
   unitCents: number;
   lineCents: number;
+  /** Present on subscription lines. */
+  billing?: { interval: "week" | "month"; intervalCount: number; label: string };
 };
 
 export function emptyCart(): Cart {
@@ -16,7 +19,7 @@ export function emptyCart(): Cart {
 }
 
 export function setQty(cart: Cart, id: string, qty: number): Cart {
-  if (!findMenuItem(id)) return { ...cart };
+  if (!findProduct(id)) return { ...cart };
   const n = Math.max(0, Math.min(MAX_QTY_PER_ITEM, Math.floor(Number(qty) || 0)));
   const next = { ...cart };
   if (n === 0) delete next[id];
@@ -40,10 +43,12 @@ export function sanitizeCart(raw: unknown): Cart {
 export function cartLines(cart: Cart): CartLine[] {
   return MENU.filter((m) => (cart[m.id] ?? 0) > 0).map((m) => ({
     id: m.id,
+    kind: m.kind,
     name: m.name,
     qty: cart[m.id],
     unitCents: m.priceCents,
     lineCents: m.priceCents * cart[m.id],
+    ...(m.billing ? { billing: m.billing } : {}),
   }));
 }
 
@@ -51,10 +56,19 @@ export function cartCount(cart: Cart): number {
   return cartLines(cart).reduce((n, l) => n + l.qty, 0);
 }
 
-/** Menu price is the price paid: no fees. Sales tax is left to the payment provider's tax settings. */
+export function hasSubscription(cart: Cart): boolean {
+  return cartLines(cart).some((l) => l.kind === "subscription");
+}
+
+/**
+ * Menu price is the price paid: no fees. `totalCents` is what is charged
+ * today; `recurringCents` is what a subscription charges every cycle.
+ */
 export function cartTotals(cart: Cart) {
-  const subtotalCents = cartLines(cart).reduce((n, l) => n + l.lineCents, 0);
-  return { subtotalCents, totalCents: subtotalCents };
+  const lines = cartLines(cart);
+  const oneOffCents = lines.filter((l) => l.kind === "one-off").reduce((n, l) => n + l.lineCents, 0);
+  const recurringCents = lines.filter((l) => l.kind === "subscription").reduce((n, l) => n + l.lineCents, 0);
+  return { oneOffCents, recurringCents, subtotalCents: oneOffCents + recurringCents, totalCents: oneOffCents + recurringCents };
 }
 
 export function formatMoney(cents: number): string {

@@ -1,11 +1,12 @@
 import Image from "next/image";
 import { MenuSection } from "@/components/MenuSection";
 import { OrderButton } from "@/components/OrderButton";
-import { STORE, SLICE_PRICE_CENTS } from "@/lib/menu";
+import { STORE, SLICE_PRICE_CENTS, SUBSCRIPTION_PRICE_CENTS } from "@/lib/menu";
 import { formatMoney } from "@/lib/cart";
 
 export default function HomePage() {
   const price = formatMoney(SLICE_PRICE_CENTS).replace(".00", "");
+  const subPrice = formatMoney(SUBSCRIPTION_PRICE_CENTS).replace(".00", "");
   return (
     <main>
       <section className="hero" aria-labelledby="hero-h">
@@ -13,10 +14,11 @@ export default function HomePage() {
           <h1 id="hero-h" className="display">
             <span>Six</span>
             <span>dollar</span>
-            <span>slices.</span>
+            <span>Fridays.</span>
           </h1>
           <p className="hero-sub">
-            Cheese on 72-hour dough, cut big, {price} a slice. Order here, pick it up hot at {STORE.address} in Davie.
+            A cheese slice on 72-hour dough, {price} a Friday, or {subPrice} a month for every Friday. Pick your Friday on the
+            calendar and it is hot when you walk in at {STORE.address} in Davie.
           </p>
           <div className="hero-cta">
             <OrderButton />
@@ -29,9 +31,9 @@ export default function HomePage() {
       </section>
 
       <div className="band" role="presentation">
-        <span>One slice on the menu.</span>
-        <span>Always {price}.</span>
-        <span>Ready in fifteen minutes.</span>
+        <span>One Friday, {price}.</span>
+        <span>Every Friday, {subPrice} a month.</span>
+        <span>Fridays {STORE.fridayPickup.open} to {STORE.fridayPickup.close}.</span>
       </div>
 
       <MenuSection />
@@ -41,16 +43,19 @@ export default function HomePage() {
           <h2 id="pickup-h" className="h2">Pickup, start to finish</h2>
           <ol className="steps">
             <li>
-              <strong>Pick your slices.</strong>
-              <span>As many as you need, up to fifty per order.</span>
+              <strong>Choose one Friday or every Friday.</strong>
+              <span>One-time slices are {price} each. The subscription is {subPrice} every four Fridays and you can cancel any time.</span>
             </li>
             <li>
-              <strong>Pay online.</strong>
-              <span>Card, Apple Pay or Google Pay on a secure checkout page. The menu price is the whole price.</span>
+              <strong>Pick the Friday on the calendar.</strong>
+              <span>For a subscription that is your first Friday. Up to {STORE.maxWeeksAhead} weeks ahead.</span>
             </li>
             <li>
-              <strong>Walk in and say your name.</strong>
-              <span>Your box is on the counter at the time you chose. We hold it for thirty minutes.</span>
+              <strong>Pay online, then say your name at the counter.</strong>
+              <span>
+                Card, Apple Pay or Google Pay on a secure page. Your slice is ready on Friday between {STORE.fridayPickup.open} and{" "}
+                {STORE.fridayPickup.close}.
+              </span>
             </li>
           </ol>
         </div>
@@ -84,6 +89,9 @@ export default function HomePage() {
                 ))}
               </tbody>
             </table>
+            <p className="hours-note">
+              Online orders are picked up on Fridays, {STORE.fridayPickup.open} to {STORE.fridayPickup.close}.
+            </p>
           </div>
         </div>
       </section>

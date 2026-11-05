@@ -216,3 +216,26 @@ img { display: block; max-width: 100%; height: auto; }
   html { scroll-behavior: auto; }
   .drawer { animation: none; }
 }
+
+/* Friday calendar */
+.field-label { font-weight: 600; font-size: 15px; }
+.cal { border: 2px solid var(--black); padding: 12px; display: grid; gap: 8px; }
+.cal.invalid { border-color: var(--red); }
+.cal-head { display: flex; align-items: center; justify-content: space-between; }
+.cal-month { font-weight: 700; }
+.cal-nav { width: 36px; height: 36px; border-radius: 999px; border: 2px solid var(--black); background: none; font-size: 20px; line-height: 1; display: grid; place-items: center; }
+.cal-nav:disabled { opacity: .25; cursor: not-allowed; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal-wd { text-align: center; font-size: 12px; font-weight: 600; color: var(--grey-on-white); padding-bottom: 4px; }
+.cal-wd-fri { color: var(--red); }
+.cal-day, .cal-empty { aspect-ratio: 1; display: grid; place-items: center; font-size: 15px; border-radius: 999px; }
+span.cal-day { color: #b5b5b5; }
+span.cal-past-friday { color: var(--grey-on-white); text-decoration: line-through; }
+button.cal-day { border: 2px solid var(--red); background: var(--white); color: var(--black); font-weight: 700; cursor: pointer; }
+button.cal-day:hover { background: #fde8e6; }
+button.cal-day.selected { background: var(--red); color: var(--red-ink); }
+.cal-foot { font-size: 14px; color: var(--grey-on-white); margin: 2px 0 0; }
+.dish-art { position: relative; }
+.dish-badge { position: absolute; left: 50%; bottom: 8%; transform: translateX(-50%) rotate(-4deg); background: var(--red); color: var(--red-ink); font-weight: 900; font-variation-settings: "wdth" 118; text-transform: uppercase; padding: 8px 16px; font-size: 18px; letter-spacing: .02em; }
+.line-total small { font-weight: 500; font-size: 12px; color: var(--grey-on-white); display: block; }
+.hours-note { margin-top: 16px; color: var(--grey-on-white); max-width: 40ch; }

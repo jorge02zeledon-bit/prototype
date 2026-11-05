@@ -1,38 +1,60 @@
 /**
- * The menu is the single source of truth for what can be bought and for
+ * The products are the single source of truth for what can be bought and for
  * how much. The checkout API prices every order from this file, never from
  * numbers the browser sends, so a tampered cart cannot change what is charged.
  */
-export type MenuItem = {
+export type ProductKind = "one-off" | "subscription";
+
+export type Product = {
   id: string;
+  kind: ProductKind;
   name: string;
   tagline: string;
   description: string;
   priceCents: number;
-  /** Shown as a small note on the card. */
+  /** For subscriptions: how often the price is charged. */
+  billing?: { interval: "week" | "month"; intervalCount: number; label: string };
   note?: string;
-  /** Path under /public used for the item image. */
+  /** Path under /public used for the product image. */
   image: string;
+  /** Label for the quantity being chosen. */
+  unitLabel: string;
 };
 
-export const SLICE_PRICE_CENTS = 600; // $6.00 per slice
+export const SLICE_PRICE_CENTS = 600; // $6.00 for one slice, one Friday
+export const SUBSCRIPTION_PRICE_CENTS = 2400; // $24.00 for a slice every Friday, four Fridays at a time
 
-export const MENU: readonly MenuItem[] = [
+export const MENU: readonly Product[] = [
   {
     id: "cheese",
-    name: "Cheese",
-    tagline: "One slice. Done right, every time.",
+    kind: "one-off",
+    name: "One Friday",
+    tagline: "A cheese slice, one Friday, six dollars.",
     description:
-      "72-hour dough, crushed San Marzano tomatoes, whole-milk mozzarella, a little pecorino, basil out of the oven.",
+      "72-hour dough, crushed San Marzano tomatoes, whole-milk mozzarella, a little pecorino, basil out of the oven. Pick the Friday, pick it up hot.",
     priceCents: SLICE_PRICE_CENTS,
     note: "Vegetarian",
     image: "/images/cheese.svg",
+    unitLabel: "slice",
+  },
+  {
+    id: "friday-club",
+    kind: "subscription",
+    name: "Every Friday",
+    tagline: "The same slice, every Friday, for $24 a month.",
+    description:
+      "One cheese slice waiting for you every Friday. Billed every four Fridays, which works out to the same $6 a slice. Pick your first Friday. Cancel any time.",
+    priceCents: SUBSCRIPTION_PRICE_CENTS,
+    billing: { interval: "week", intervalCount: 4, label: "every 4 weeks" },
+    note: "Cancel any time",
+    image: "/images/cheese.svg",
+    unitLabel: "slice every Friday",
   },
 ] as const;
 
 export const MAX_QTY_PER_ITEM = 50;
 
-export function findMenuItem(id: string): MenuItem | undefined {
+export function findProduct(id: string): Product | undefined {
   return MENU.find((m) => m.id === id);
 }
 
@@ -42,10 +64,14 @@ export const STORE = {
   address: "11406 W State Rd 84",
   city: "Davie, Florida 33325",
   phone: "(555) 010-0118",
+  timeZone: "America/New_York",
+  /** Online orders are picked up on Fridays during these hours. */
+  fridayPickup: { open: "11:00 AM", close: "7:00 PM" },
   hours: [
     { days: "Monday to Thursday", open: "11:00 AM", close: "9:00 PM" },
     { days: "Friday and Saturday", open: "11:00 AM", close: "11:00 PM" },
     { days: "Sunday", open: "12:00 PM", close: "8:00 PM" },
   ],
-  pickupSlotsMinutes: [15, 30, 45, 60] as const,
+  /** How far ahead a Friday can be chosen. */
+  maxWeeksAhead: 8,
 };

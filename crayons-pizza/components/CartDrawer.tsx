@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { formatMoney } from "@/lib/cart";
-import { STORE } from "@/lib/menu";
+import { formatFriday, type ISODate } from "@/lib/fridays";
 import { useCart } from "./CartProvider";
+import { FridayPicker } from "./FridayPicker";
 import { Stepper } from "./Stepper";
 
 type Step = "cart" | "details";
@@ -12,12 +13,16 @@ type Errors = Record<string, string | undefined>;
 export function CartDrawer() {
   const { lines, totals, count, cart, set, isOpen, close } = useCart();
   const [step, setStep] = useState<Step>("cart");
-  const [form, setForm] = useState({ name: "", phone: "", email: "", pickupInMinutes: "", note: "" });
+  const [form, setForm] = useState({ name: "", phone: "", email: "", note: "" });
+  const [pickupDate, setPickupDate] = useState<ISODate | "">("");
   const [errors, setErrors] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
   const panel = useRef<HTMLDivElement>(null);
   const closeBtn = useRef<HTMLButtonElement>(null);
   const returnFocus = useRef<Element | null>(null);
+
+  const subscribing = lines.some((l) => l.kind === "subscription");
+  const oneOff = lines.some((l) => l.kind === "one-off");
 
   useEffect(() => {
     if (!isOpen) return;
@@ -56,10 +61,9 @@ export function CartDrawer() {
     value: form[key],
     "aria-invalid": errors[key] ? true : undefined,
     "aria-describedby": errors[key] ? `err-${key}` : undefined,
-    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       setForm((f) => ({ ...f, [key]: e.target.value }));
       if (errors[key]) setErrors((er) => ({ ...er, [key]: undefined }));
-      if (key === "pickupInMinutes" && errors.pickup) setErrors((er) => ({ ...er, pickup: undefined }));
     },
   });
 
@@ -74,7 +78,7 @@ export function CartDrawer() {
         body: JSON.stringify({
           cart,
           customer: { name: form.name, phone: form.phone, email: form.email },
-          pickupInMinutes: Number(form.pickupInMinutes),
+          pickupDate,
           note: form.note,
         }),
       });
@@ -90,6 +94,11 @@ export function CartDrawer() {
       setBusy(false);
     }
   }
+
+  const dateLabel = subscribing && oneOff ? "Your first Friday" : subscribing ? "Start on which Friday?" : "Pick up on which Friday?";
+  const payLabel = subscribing
+    ? `Pay ${formatMoney(totals.totalCents)} today`
+    : `Pay ${formatMoney(totals.totalCents)}`;
 
   return (
     <>
@@ -118,10 +127,15 @@ export function CartDrawer() {
                 {lines.map((l) => (
                   <li key={l.id} className="line">
                     <div className="line-main">
-                      <span className="line-name">{l.name} slice</span>
-                      <span className="line-unit">{formatMoney(l.unitCents)} each</span>
+                      <span className="line-name">{l.kind === "subscription" ? "Every Friday" : "One Friday"}</span>
+                      <span className="line-unit">
+                        {formatMoney(l.unitCents)} {l.kind === "subscription" ? `${l.billing?.label} per slice` : "a slice"}
+                      </span>
                     </div>
-                    <span className="line-total">{formatMoney(l.lineCents)}</span>
+                    <span className="line-total">
+                      {formatMoney(l.lineCents)}
+                      {l.kind === "subscription" ? <small> {l.billing?.label}</small> : null}
+                    </span>
                     <Stepper id={l.id} label={l.name} />
                     <button type="button" className="link-btn" onClick={() => set(l.id, 0)}>
                       Remove
@@ -130,17 +144,27 @@ export function CartDrawer() {
                 ))}
               </ul>
               <div className="totals">
-                <div>
-                  <span>
-                    {count} slice{count === 1 ? "" : "s"}
-                  </span>
-                  <span>{formatMoney(totals.subtotalCents)}</span>
-                </div>
+                {oneOff ? (
+                  <div>
+                    <span>One-time slices</span>
+                    <span>{formatMoney(totals.oneOffCents)}</span>
+                  </div>
+                ) : null}
+                {subscribing ? (
+                  <div>
+                    <span>Subscription, every 4 weeks</span>
+                    <span>{formatMoney(totals.recurringCents)}</span>
+                  </div>
+                ) : null}
                 <div className="totals-grand">
-                  <span>Total</span>
+                  <span>{subscribing ? "Due today" : "Total"}</span>
                   <span>{formatMoney(totals.totalCents)}</span>
                 </div>
-                <p className="totals-note">No service fee. Pay by card on the next page.</p>
+                <p className="totals-note">
+                  {subscribing
+                    ? `Then ${formatMoney(totals.recurringCents)} every 4 weeks until you cancel. No service fee.`
+                    : "No service fee. Pay by card on the next page."}
+                </p>
               </div>
 
               {step === "cart" ? (
@@ -154,6 +178,22 @@ export function CartDrawer() {
                 </div>
               ) : (
                 <form className="form" onSubmit={submit} noValidate>
+                  <div className={`field ${errors.pickupDate ? "invalid" : ""}`}>
+                    <span className="field-label" id="lbl-pickupDate">{dateLabel}</span>
+                    <FridayPicker
+                      value={pickupDate}
+                      onChange={(d) => {
+                        setPickupDate(d);
+                        if (errors.pickupDate) setErrors((er) => ({ ...er, pickupDate: undefined }));
+                      }}
+                      describedBy={errors.pickupDate ? "err-pickupDate" : "lbl-pickupDate"}
+                      invalid={!!errors.pickupDate}
+                    />
+                    {errors.pickupDate ? <p className="err" id="err-pickupDate">{errors.pickupDate}</p> : null}
+                    {subscribing && pickupDate ? (
+                      <p className="hint">First slice {formatFriday(pickupDate, "short")}, then every Friday after.</p>
+                    ) : null}
+                  </div>
                   <div className={`field ${errors.name ? "invalid" : ""}`}>
                     <label htmlFor="f-name">Name for the order</label>
                     <input type="text" autoComplete="name" required {...field("name")} />
@@ -165,21 +205,9 @@ export function CartDrawer() {
                     {errors.phone ? <p className="err" id="err-phone">{errors.phone}</p> : <p className="hint">We text you if anything changes.</p>}
                   </div>
                   <div className={`field ${errors.email ? "invalid" : ""}`}>
-                    <label htmlFor="f-email">Email for the receipt (optional)</label>
+                    <label htmlFor="f-email">Email for the receipt {subscribing ? "" : "(optional)"}</label>
                     <input type="email" autoComplete="email" inputMode="email" {...field("email")} />
                     {errors.email ? <p className="err" id="err-email">{errors.email}</p> : null}
-                  </div>
-                  <div className={`field ${errors.pickup ? "invalid" : ""}`}>
-                    <label htmlFor="f-pickupInMinutes">Pick up in</label>
-                    <select required {...field("pickupInMinutes")} aria-invalid={errors.pickup ? true : undefined} aria-describedby={errors.pickup ? "err-pickup" : undefined}>
-                      <option value="">Choose a time</option>
-                      {STORE.pickupSlotsMinutes.map((m) => (
-                        <option key={m} value={m}>
-                          {m} minutes
-                        </option>
-                      ))}
-                    </select>
-                    {errors.pickup ? <p className="err" id="err-pickup">{errors.pickup}</p> : null}
                   </div>
                   <div className="field">
                     <label htmlFor="f-note">Anything else? (optional)</label>
@@ -188,7 +216,7 @@ export function CartDrawer() {
                   {errors.form ? <p className="err" role="alert">{errors.form}</p> : null}
                   <div className="stack">
                     <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
-                      {busy ? "Opening secure checkout" : `Pay ${formatMoney(totals.totalCents)}`}
+                      {busy ? "Opening secure checkout" : payLabel}
                     </button>
                     <button type="button" className="btn btn-ghost btn-block" onClick={() => setStep("cart")} disabled={busy}>
                       Back
