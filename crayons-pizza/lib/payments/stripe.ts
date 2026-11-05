@@ -26,6 +26,8 @@ export function createStripeProvider(
       const metadata = {
         customer_name: req.customer.name,
         student_name: req.customer.student,
+        grade: req.customer.grade,
+        classroom: req.customer.classroom,
         customer_phone: req.customer.phone,
         pickup_date: req.pickupDate,
         note: req.note ?? "",
@@ -73,11 +75,29 @@ export function createStripeProvider(
       });
       return { kind: "order.paid", order: toPaidOrder(session) };
     },
+
+    async listPaidOrders({ sinceDays }): Promise<PaidOrder[]> {
+      const since = Math.floor(Date.now() / 1000) - sinceDays * 86400;
+      const out: PaidOrder[] = [];
+      for await (const s of stripe.checkout.sessions.list({
+        status: "complete",
+        created: { gte: since },
+        limit: 100,
+        expand: ["data.line_items", "data.line_items.data.price", "data.subscription"],
+      })) {
+        if (s.payment_status !== "paid" && s.mode !== "subscription") continue;
+        out.push(toPaidOrder(s));
+        if (out.length >= 2000) break;
+      }
+      return out;
+    },
   };
 }
 
 function toPaidOrder(s: Stripe.Checkout.Session): PaidOrder {
   const items = s.line_items?.data ?? [];
+  const sub = s.subscription && typeof s.subscription === "object" ? s.subscription : null;
+  const pi = typeof s.payment_intent === "string" ? s.payment_intent : s.payment_intent?.id;
   return {
     provider: "stripe",
     sessionId: s.id,
@@ -88,11 +108,20 @@ function toPaidOrder(s: Stripe.Checkout.Session): PaidOrder {
     customer: {
       name: s.metadata?.customer_name || s.customer_details?.name || undefined,
       student: s.metadata?.student_name || undefined,
+      grade: s.metadata?.grade || undefined,
+      classroom: s.metadata?.classroom || undefined,
       email: s.customer_details?.email || undefined,
       phone: s.metadata?.customer_phone || s.customer_details?.phone || undefined,
     },
     pickupDate: s.metadata?.pickup_date || undefined,
     note: s.metadata?.note || undefined,
+    createdAt: new Date(s.created * 1000).toISOString(),
+    ...(sub ? { subscription: { id: sub.id, status: sub.status, canceledAt: sub.canceled_at ? new Date(sub.canceled_at * 1000).toISOString() : undefined } } : {}),
+    dashboardUrl: sub
+      ? `https://dashboard.stripe.com/${s.livemode ? "" : "test/"}subscriptions/${sub.id}`
+      : pi
+        ? `https://dashboard.stripe.com/${s.livemode ? "" : "test/"}payments/${pi}`
+        : undefined,
     lines: items.map((li) => {
       const rec = li.price?.recurring;
       return {

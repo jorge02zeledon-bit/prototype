@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { formatMoney } from "@/lib/cart";
 import { formatFriday, type ISODate } from "@/lib/fridays";
+import { GRADES } from "@/lib/menu";
 import { useCart } from "./CartProvider";
 import { FridayPicker } from "./FridayPicker";
 import { Stepper } from "./Stepper";
@@ -13,7 +14,7 @@ type Errors = Record<string, string | undefined>;
 export function CartDrawer() {
   const { lines, totals, count, cart, set, isOpen, close } = useCart();
   const [step, setStep] = useState<Step>("cart");
-  const [form, setForm] = useState({ name: "", student: "", phone: "", email: "", note: "" });
+  const [form, setForm] = useState({ name: "", student: "", grade: "", classroom: "", phone: "", email: "", note: "" });
   const [pickupDate, setPickupDate] = useState<ISODate | "">("");
   const [errors, setErrors] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
@@ -61,7 +62,7 @@ export function CartDrawer() {
     value: form[key],
     "aria-invalid": errors[key] ? true : undefined,
     "aria-describedby": errors[key] ? `err-${key}` : undefined,
-    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
       setForm((f) => ({ ...f, [key]: e.target.value }));
       if (errors[key]) setErrors((er) => ({ ...er, [key]: undefined }));
     },
@@ -77,7 +78,7 @@ export function CartDrawer() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           cart,
-          customer: { name: form.name, student: form.student, phone: form.phone, email: form.email },
+          customer: { name: form.name, student: form.student, grade: form.grade, classroom: form.classroom, phone: form.phone, email: form.email },
           pickupDate,
           note: form.note,
         }),
@@ -203,6 +204,25 @@ export function CartDrawer() {
                     <label htmlFor="f-student">Student&apos;s name</label>
                     <input type="text" autoComplete="off" maxLength={80} required {...field("student")} />
                     {errors.student ? <p className="err" id="err-student">{errors.student}</p> : <p className="hint">The slice is set aside under this name.</p>}
+                  </div>
+                  <div className="two-up">
+                    <div className={`field ${errors.grade ? "invalid" : ""}`}>
+                      <label htmlFor="f-grade">Grade</label>
+                      <select required {...field("grade")}>
+                        <option value="">Choose</option>
+                        {GRADES.map((g) => (
+                          <option key={g} value={g}>
+                            {g}
+                          </option>
+                        ))}
+                      </select>
+                      {errors.grade ? <p className="err" id="err-grade">{errors.grade}</p> : null}
+                    </div>
+                    <div className={`field ${errors.classroom ? "invalid" : ""}`}>
+                      <label htmlFor="f-classroom">Teacher or room</label>
+                      <input type="text" autoComplete="off" maxLength={60} required placeholder="Ms. Rivera, Rm 12" {...field("classroom")} />
+                      {errors.classroom ? <p className="err" id="err-classroom">{errors.classroom}</p> : null}
+                    </div>
                   </div>
                   <div className={`field ${errors.phone ? "invalid" : ""}`}>
                     <label htmlFor="f-phone">Mobile number</label>

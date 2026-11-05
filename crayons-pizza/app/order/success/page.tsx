@@ -36,7 +36,7 @@ export default async function SuccessPage({ searchParams }: { searchParams: Prom
       </h1>
       <p>
         {order.customer.name ? `Thanks, ${order.customer.name}. ` : ""}
-        {order.customer.student ? `The slice is set aside for ${order.customer.student}. ` : ""}
+        {order.customer.student ? `The slice is set aside for ${order.customer.student}${order.customer.grade ? `, ${order.customer.grade} grade` : ""}${order.customer.classroom ? `, ${order.customer.classroom}` : ""}. ` : ""}
         {when ? (sub ? `First slice ${when}, then every Friday after. ` : `Pick up ${when}. `) : ""}
         {STORE.fridayPickup.open} to {STORE.fridayPickup.close} at {STORE.address}. Give the student's name at the counter.
       </p>

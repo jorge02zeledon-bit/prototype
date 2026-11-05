@@ -42,6 +42,7 @@ export function createMockProvider(signingSecret: string): PaymentProvider {
         customer: req.customer,
         pickupDate: req.pickupDate,
         note: req.note,
+        createdAt: new Date().toISOString(),
         lines: req.lines.map((l) => ({
           name: l.name,
           qty: l.qty,
@@ -64,6 +65,10 @@ export function createMockProvider(signingSecret: string): PaymentProvider {
 
     async handleWebhook(): Promise<WebhookResult> {
       return { kind: "ignored", reason: "mock provider has no webhooks" };
+    },
+
+    async listPaidOrders(): Promise<PaidOrder[]> {
+      return [];
     },
   };
 }

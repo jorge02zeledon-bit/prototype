@@ -17,6 +17,8 @@ export async function recordPaidOrder(order: PaidOrder): Promise<void> {
       total: order.totalCents,
       customer: order.customer.name,
       student: order.customer.student,
+      grade: order.customer.grade,
+      classroom: order.customer.classroom,
       phone: order.customer.phone,
       pickupDate: order.pickupDate,
       lines: order.lines,

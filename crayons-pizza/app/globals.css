@@ -239,3 +239,25 @@ button.cal-day.selected { background: var(--red); color: var(--red-ink); }
 .dish-badge { position: absolute; left: 50%; bottom: 8%; transform: translateX(-50%) rotate(-4deg); background: var(--red); color: var(--red-ink); font-weight: 900; font-variation-settings: "wdth" 118; text-transform: uppercase; padding: 8px 16px; font-size: 18px; letter-spacing: .02em; }
 .line-total small { font-weight: 500; font-size: 12px; color: var(--grey-on-white); display: block; }
 .hours-note { margin-top: 16px; color: var(--grey-on-white); max-width: 40ch; }
+
+/* Orders page (staff) */
+.two-up { display: grid; grid-template-columns: 1fr 1.6fr; gap: 12px; }
+.page.admin { display: grid; gap: 20px; max-width: var(--wrap); margin: 0 auto; width: 100%; }
+.page.admin.narrow { max-width: 680px; }
+.page.admin code { background: #f1f1f1; padding: 2px 6px; }
+.admin-head { display: flex; justify-content: space-between; align-items: end; gap: 16px; flex-wrap: wrap; }
+.admin-filters { display: grid; gap: 12px; grid-template-columns: 1fr; align-items: end; border: 2px solid var(--black); padding: 16px; }
+.admin-filter-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.admin-summary { font-size: 17px; }
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 2px solid var(--black); }
+.orders { border-collapse: collapse; width: 100%; min-width: 900px; font-size: 15px; }
+.orders th, .orders td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--rule-on-white); vertical-align: top; }
+.orders th { background: var(--black); color: var(--white); font-weight: 600; position: sticky; top: 0; }
+.orders tbody tr:nth-child(even) { background: #fafafa; }
+.muted { color: var(--grey-on-white); }
+.small { font-size: 13px; }
+.pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; background: #eee; }
+.pill-paid, .pill-active { background: #dff3e3; color: #16642d; }
+.pill-canceled, .pill-unpaid { background: #fde3e1; color: #9a1f14; }
+.pill-past_due, .pill-trialing { background: #fff1cc; color: #7a5200; }
+@media (min-width: 760px) { .admin-filters { grid-template-columns: 1fr 1fr 2fr auto; } }
