@@ -12,8 +12,12 @@ import type { CheckoutRequest, CheckoutSession, PaidOrder, PaymentProvider, Webh
  * recurring price; when the cart has one, the session runs in subscription
  * mode and any one-off slices are charged once on the same checkout.
  */
-export function createStripeProvider(secretKey: string, webhookSecret?: string): PaymentProvider {
-  const stripe = new Stripe(secretKey);
+export function createStripeProvider(
+  secretKey: string,
+  webhookSecret?: string,
+  config: Stripe.StripeConfig = {},
+): PaymentProvider {
+  const stripe = new Stripe(secretKey, config);
 
   return {
     name: "stripe",
