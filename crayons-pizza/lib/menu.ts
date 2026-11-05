@@ -63,7 +63,7 @@ export const STORE = {
   tagline: "Every slice, six dollars.",
   address: "11406 W State Rd 84",
   city: "Davie, Florida 33325",
-  phone: "(555) 010-0118",
+  phone: "(954) 452-1616",
   timeZone: "America/New_York",
   /** Online orders are picked up on Fridays during these hours. */
   fridayPickup: { open: "11:00 AM", close: "7:00 PM" },
