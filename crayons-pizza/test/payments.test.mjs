@@ -10,7 +10,7 @@ const req = {
   mode: "subscription",
   totalCents: 3600,
   currency: "usd",
-  customer: { name: "Ana", phone: "5551234567" },
+  customer: { name: "Ana", student: "Leo", phone: "5551234567" },
   pickupDate: "2026-11-13",
   successUrl: "https://example.test/order/success",
   cancelUrl: "https://example.test/order/cancelled",
@@ -26,6 +26,7 @@ test("mock provider round-trips a signed order with date and recurring lines", a
   assert.equal(unpaid.mode, "subscription");
   assert.equal(unpaid.pickupDate, "2026-11-13");
   assert.equal(unpaid.lines[1].recurring, "every 4 weeks");
+  assert.equal(unpaid.customer.student, "Leo");
   assert.equal(unpaid.lines[0].recurring, undefined);
   const paid = await p.getOrder(new URL(url.searchParams.get("success")).searchParams.get("session_id"));
   assert.equal(paid.status, "paid");

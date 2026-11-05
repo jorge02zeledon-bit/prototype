@@ -60,7 +60,7 @@ export default async function MockCheckoutPage({
           <span>{formatMoney(order.totalCents)}</span>
         </div>
         <p className="receipt-note">
-          {order.customer.name}, {order.customer.phone}, {order.mode === "subscription" ? "first Friday" : "pickup"} {when}
+          {order.customer.name} for {order.customer.student}, {order.customer.phone}, {order.mode === "subscription" ? "first Friday" : "pickup"} {when}
         </p>
       </div>
       <div className="row">

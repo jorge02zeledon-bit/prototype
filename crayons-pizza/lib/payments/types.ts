@@ -12,6 +12,8 @@ export type CheckoutRequest = {
   currency: "usd";
   customer: {
     name: string;
+    /** The student the slice is for. */
+    student: string;
     email?: string;
     phone: string;
   };
@@ -37,7 +39,7 @@ export type PaidOrder = {
   mode: "payment" | "subscription";
   totalCents: number;
   currency: string;
-  customer: { name?: string; email?: string; phone?: string };
+  customer: { name?: string; student?: string; email?: string; phone?: string };
   pickupDate?: string;
   note?: string;
   lines: { name: string; qty: number; unitCents: number; recurring?: string }[];

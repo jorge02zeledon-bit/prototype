@@ -13,7 +13,7 @@ type Errors = Record<string, string | undefined>;
 export function CartDrawer() {
   const { lines, totals, count, cart, set, isOpen, close } = useCart();
   const [step, setStep] = useState<Step>("cart");
-  const [form, setForm] = useState({ name: "", phone: "", email: "", note: "" });
+  const [form, setForm] = useState({ name: "", student: "", phone: "", email: "", note: "" });
   const [pickupDate, setPickupDate] = useState<ISODate | "">("");
   const [errors, setErrors] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
@@ -77,7 +77,7 @@ export function CartDrawer() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           cart,
-          customer: { name: form.name, phone: form.phone, email: form.email },
+          customer: { name: form.name, student: form.student, phone: form.phone, email: form.email },
           pickupDate,
           note: form.note,
         }),
@@ -195,9 +195,14 @@ export function CartDrawer() {
                     ) : null}
                   </div>
                   <div className={`field ${errors.name ? "invalid" : ""}`}>
-                    <label htmlFor="f-name">Name for the order</label>
+                    <label htmlFor="f-name">Your name</label>
                     <input type="text" autoComplete="name" required {...field("name")} />
                     {errors.name ? <p className="err" id="err-name">{errors.name}</p> : null}
+                  </div>
+                  <div className={`field ${errors.student ? "invalid" : ""}`}>
+                    <label htmlFor="f-student">Student&apos;s name</label>
+                    <input type="text" autoComplete="off" maxLength={80} required {...field("student")} />
+                    {errors.student ? <p className="err" id="err-student">{errors.student}</p> : <p className="hint">The slice is set aside under this name.</p>}
                   </div>
                   <div className={`field ${errors.phone ? "invalid" : ""}`}>
                     <label htmlFor="f-phone">Mobile number</label>

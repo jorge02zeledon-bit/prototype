@@ -51,7 +51,7 @@ export default function HomePage() {
               <span>For a subscription that is your first Friday. Up to {STORE.maxWeeksAhead} weeks ahead.</span>
             </li>
             <li>
-              <strong>Pay online, then say your name at the counter.</strong>
+              <strong>Pay online, then give the student&apos;s name at the counter.</strong>
               <span>
                 Card, Apple Pay or Google Pay on a secure page. Your slice is ready on Friday between {STORE.fridayPickup.open} and{" "}
                 {STORE.fridayPickup.close}.

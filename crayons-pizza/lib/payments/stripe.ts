@@ -25,6 +25,7 @@ export function createStripeProvider(
     async createCheckout(req: CheckoutRequest): Promise<CheckoutSession> {
       const metadata = {
         customer_name: req.customer.name,
+        student_name: req.customer.student,
         customer_phone: req.customer.phone,
         pickup_date: req.pickupDate,
         note: req.note ?? "",
@@ -86,6 +87,7 @@ function toPaidOrder(s: Stripe.Checkout.Session): PaidOrder {
     currency: s.currency ?? "usd",
     customer: {
       name: s.metadata?.customer_name || s.customer_details?.name || undefined,
+      student: s.metadata?.student_name || undefined,
       email: s.customer_details?.email || undefined,
       phone: s.metadata?.customer_phone || s.customer_details?.phone || undefined,
     },

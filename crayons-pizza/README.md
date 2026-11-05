@@ -1,6 +1,6 @@
 # Crayons Pizza
 
-Online ordering for a pizza shop in Davie, Florida. Two products: **One Friday**, a cheese slice for $6.00 picked up on a Friday you choose, and **Every Friday**, a subscription that puts a cheese slice aside every Friday for $24.00 every four weeks. Customers pick their Friday on a calendar (only Fridays can be chosen, up to eight weeks ahead), enter pickup details, pay on a hosted checkout page, and get a confirmation. Built with Next.js so it deploys to Vercel as is.
+Online ordering for a pizza shop in Davie, Florida. Two products: **One Friday**, a cheese slice for $6.00 picked up on a Friday you choose, and **Every Friday**, a subscription that puts a cheese slice aside every Friday for $24.00 every four weeks. Customers pick their Friday on a calendar (only Fridays can be chosen, up to eight weeks ahead), enter their own name and the student's name (both required), pay on a hosted checkout page, and get a confirmation. Built with Next.js so it deploys to Vercel as is.
 
 Payments go through a small provider interface. **Stripe Checkout is implemented** (payment mode for one-off orders, subscription mode when the cart has a subscription, with any one-off slices charged once on the same checkout), a **mock provider** lets you run the whole flow with no keys, and a **Chase stub** marks where that integration goes.
 
