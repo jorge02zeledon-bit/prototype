@@ -55,7 +55,7 @@ export const MENU: readonly Product[] = [
 export const MAX_QTY_PER_ITEM = 50;
 
 /** Grades offered at checkout. Edit to match the school. */
-export const GRADES = ["Pre-K", "K", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th", "10th", "11th", "12th"] as const;
+export const GRADES = ["1 Year Old Room", "2 Year Old Room", "3 Year Old Room", "VPK Room", "K", "1st", "2nd", "3rd", "4th", "5th", "6th"] as const;
 export type Grade = (typeof GRADES)[number];
 
 export function findProduct(id: string): Product | undefined {
