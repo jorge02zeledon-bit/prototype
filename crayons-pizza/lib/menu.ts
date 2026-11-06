@@ -70,12 +70,8 @@ export const STORE = {
   phone: "(954) 452-1616",
   timeZone: "America/New_York",
   /** Online orders are picked up on Fridays during these hours. */
-  fridayPickup: { open: "11:00 AM", close: "7:00 PM" },
-  hours: [
-    { days: "Monday to Thursday", open: "11:00 AM", close: "9:00 PM" },
-    { days: "Friday and Saturday", open: "11:00 AM", close: "11:00 PM" },
-    { days: "Sunday", open: "12:00 PM", close: "8:00 PM" },
-  ],
+  fridayPickup: { open: "9:00 AM", close: "5:00 PM" },
+  hours: [{ days: "Monday to Friday", open: "9:00 AM", close: "5:00 PM" }],
   /** How far ahead a Friday can be chosen. */
   maxWeeksAhead: 8,
 };
