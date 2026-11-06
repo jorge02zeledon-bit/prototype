@@ -17,8 +17,8 @@ export default function HomePage() {
             <span>Fridays.</span>
           </h1>
           <p className="hero-sub">
-            A cheese slice on 72-hour dough, {price} a Friday, or {subPrice} a month for every Friday. Pick your Friday on the
-            calendar and it is hot when you walk in at {STORE.address} in Davie.
+            A cheese slice, {price} a Friday, or {subPrice} a month for every Friday. Pick your Friday on the calendar and it
+            is hot when you walk in at {STORE.address} in Davie.
           </p>
           <div className="hero-cta">
             <OrderButton />
