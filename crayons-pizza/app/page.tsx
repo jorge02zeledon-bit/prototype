@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { MenuSection } from "@/components/MenuSection";
 import { OrderButton } from "@/components/OrderButton";
 import { STORE, SLICE_PRICE_CENTS, SUBSCRIPTION_PRICE_CENTS } from "@/lib/menu";
@@ -102,6 +103,9 @@ export default function HomePage() {
           <span>
             {STORE.address}, {STORE.city}
           </span>
+          <Link className="staff-link" href="/admin/orders" aria-label="Staff orders" title="Staff">
+            <Image src="/images/cheese.svg" alt="" width={22} height={22} />
+          </Link>
         </div>
       </footer>
     </main>

@@ -151,6 +151,9 @@ img { display: block; max-width: 100%; height: auto; }
 .footer { background: var(--black); color: var(--grey-on-black); padding: 28px 0 44px; border-top: 1px solid var(--rule-on-black); }
 .footer-inner { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: baseline; justify-content: space-between; font-size: 15px; }
 .footer .wordmark { color: var(--white); }
+.staff-link { display: inline-flex; margin-left: auto; opacity: .28; transition: opacity .15s ease, transform .15s ease; line-height: 0; }
+.staff-link:hover, .staff-link:focus-visible { opacity: 1; transform: rotate(-12deg); }
+.footer-inner { align-items: center; }
 
 /* Simple pages (success, cancelled, mock) */
 .page { background: var(--white); color: var(--black); min-height: 70vh; padding: clamp(48px, 8vw, 110px) var(--gutter); display: grid; gap: 20px; align-content: start; }
