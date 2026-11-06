@@ -31,7 +31,7 @@ export const MENU: readonly Product[] = [
     name: "One Friday",
     tagline: "A cheese slice, one Friday, six dollars.",
     description:
-      "72-hour dough, crushed San Marzano tomatoes, whole-milk mozzarella, a little pecorino, basil out of the oven. Pick the Friday, pick it up hot.",
+      "Wider than a normal slice, with a soft crust and cheese that covers it edge to edge. Thick, doughy crust, tomato sauce, and a heavy layer of mozzarella. No other toppings.",
     priceCents: SLICE_PRICE_CENTS,
     note: "Vegetarian",
     image: "/images/cheese.svg",
