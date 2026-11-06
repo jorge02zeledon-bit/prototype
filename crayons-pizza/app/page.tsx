@@ -64,8 +64,8 @@ export default function HomePage() {
 
       <section className="hours" id="hours" aria-labelledby="hours-h">
         <div className="wrap hours-grid">
-          <div>
-            <h2 id="hours-h" className="h2">Find us</h2>
+          <div className="hours-col">
+            <h2 id="hours-h" className="h3 hours-title">Find us</h2>
             <address>
               <strong>{STORE.name}</strong>
               <br />
@@ -73,11 +73,11 @@ export default function HomePage() {
               <br />
               {STORE.city}
               <br />
-              <a href={`tel:${STORE.phone.replace(/\D/g, "")}`}>{STORE.phone}</a>
+              <a className="plain" href={`tel:${STORE.phone.replace(/\D/g, "")}`}>{STORE.phone}</a>
             </address>
           </div>
-          <div>
-            <h3 className="h3">Hours</h3>
+          <div className="hours-col">
+            <h2 className="h3 hours-title">Hours</h2>
             <table className="hours-table">
               <tbody>
                 {STORE.hours.map((h) => (
@@ -91,7 +91,10 @@ export default function HomePage() {
               </tbody>
             </table>
             <p className="hours-note">
-              Online orders are picked up on Fridays, {STORE.fridayPickup.open} to {STORE.fridayPickup.close}.
+              Online orders are picked up on Fridays,{" "}
+              <span className="nowrap">
+                {STORE.fridayPickup.open} to {STORE.fridayPickup.close}.
+              </span>
             </p>
           </div>
         </div>
@@ -100,9 +103,6 @@ export default function HomePage() {
       <footer className="footer">
         <div className="wrap footer-inner">
           <span className="wordmark">Crayons Pizza</span>
-          <span>
-            {STORE.address}, {STORE.city}
-          </span>
           <Link className="staff-link" href="/admin/orders" aria-label="Staff orders" title="Staff">
             <Image src="/images/cheese.svg" alt="" width={22} height={22} />
           </Link>
